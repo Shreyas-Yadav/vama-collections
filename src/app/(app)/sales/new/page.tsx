@@ -1,9 +1,8 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Trash2, Search } from 'lucide-react'
-import { useForm } from 'react-hook-form'
+import { Plus, Trash2 } from 'lucide-react'
 import { PageHeader } from '@/components/layout/page-header'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -12,8 +11,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from '@/components/ui/dialog'
 import { useProductSearch } from '@/hooks/use-products'
-import { useCustomerSearch } from '@/hooks/use-customers'
+import { useCustomerSearch, useCreateCustomer } from '@/hooks/use-customers'
 import { useCreateBill } from '@/hooks/use-sales'
 import { useToast } from '@/providers/toast-provider'
 import { calculateBill, formatINR, paiToRupees } from '@/lib/format'
@@ -41,6 +43,7 @@ export default function NewBillPage() {
   const [customerPhone, setCustomerPhone] = useState('')
   const [customerId, setCustomerId] = useState<string>()
   const [isInterState, setIsInterState] = useState(false)
+  const [isGstEnabled, setIsGstEnabled] = useState(true)
   const [paymentMethod, setPaymentMethod] = useState('CASH')
   const [amountPaidRupees, setAmountPaidRupees] = useState('')
   const [lineItems, setLineItems] = useState<LineItem[]>([])
@@ -49,6 +52,12 @@ export default function NewBillPage() {
   const [showProductSearch, setShowProductSearch] = useState(false)
   const [showCustomerSearch, setShowCustomerSearch] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+
+  const [showNewCustomerDialog, setShowNewCustomerDialog] = useState(false)
+  const [newCustomerName, setNewCustomerName] = useState('')
+  const [newCustomerPhone, setNewCustomerPhone] = useState('')
+  const [newCustomerEmail, setNewCustomerEmail] = useState('')
+  const createCustomer = useCreateCustomer()
 
   const { data: productResults } = useProductSearch(productSearch)
   const { data: customerResults } = useCustomerSearch(customerSearch)
@@ -61,6 +70,7 @@ export default function NewBillPage() {
       gstSlab: li.gstSlab,
     })),
     isInterState,
+    isGstEnabled,
   )
 
   const addProduct = (product: Product) => {
@@ -87,6 +97,36 @@ export default function NewBillPage() {
     setCustomerPhone(c.phone)
     setCustomerSearch('')
     setShowCustomerSearch(false)
+  }
+
+  const openNewCustomerDialog = () => {
+    setNewCustomerName(customerName)
+    setNewCustomerPhone(customerPhone)
+    setNewCustomerEmail('')
+    setShowNewCustomerDialog(true)
+  }
+
+  const handleAddNewCustomer = async () => {
+    if (!newCustomerName) {
+      toast({ title: 'Enter customer name', variant: 'warning' })
+      return
+    }
+    try {
+      const customer = await createCustomer.mutateAsync({
+        name: newCustomerName,
+        phone: newCustomerPhone,
+        email: newCustomerEmail || undefined,
+      })
+      setCustomerId(customer.id)
+      setCustomerName(customer.name)
+      setCustomerPhone(customer.phone)
+      setCustomerSearch('')
+      setShowCustomerSearch(false)
+      setShowNewCustomerDialog(false)
+      toast({ title: 'Customer added', variant: 'success' })
+    } catch {
+      toast({ title: 'Failed to add customer', variant: 'error' })
+    }
   }
 
   const updateLine = (index: number, field: keyof LineItem, value: string | number) => {
@@ -122,6 +162,7 @@ export default function NewBillPage() {
         customerPhone: customerPhone || undefined,
         status,
         isInterState,
+        isGstEnabled,
         lineItems: lineItems.map((li) => ({
           productId: li.productId,
           productName: li.productName,
@@ -167,19 +208,31 @@ export default function NewBillPage() {
                     }}
                     placeholder="Customer name or search..."
                   />
-                  {showCustomerSearch && customerResults && customerResults.length > 0 && (
+                  {showCustomerSearch && customerSearch.length >= 2 && (
                     <div className="absolute top-full left-0 right-0 z-10 mt-1 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-white shadow-lg">
-                      {customerResults.map((c) => (
-                        <button
-                          key={c.id}
-                          type="button"
-                          className="w-full text-left px-3 py-2 text-sm hover:bg-[var(--color-surface-raised)] transition-colors first:rounded-t-[var(--radius-lg)] last:rounded-b-[var(--radius-lg)]"
-                          onClick={() => selectCustomer(c)}
-                        >
-                          <span className="font-medium">{c.name}</span>
-                          <span className="text-[var(--color-muted)] ml-2">{c.phone}</span>
-                        </button>
-                      ))}
+                      {customerResults && customerResults.length > 0
+                        ? customerResults.map((c) => (
+                            <button
+                              key={c.id}
+                              type="button"
+                              className="w-full text-left px-3 py-2 text-sm hover:bg-[var(--color-surface-raised)] transition-colors first:rounded-t-[var(--radius-lg)] last:rounded-b-[var(--radius-lg)]"
+                              onClick={() => selectCustomer(c)}
+                            >
+                              <span className="font-medium">{c.name}</span>
+                              <span className="text-[var(--color-muted)] ml-2">{c.phone}</span>
+                            </button>
+                          ))
+                        : (
+                            <div className="px-3 py-2 text-sm text-[var(--color-muted)]">No customers found</div>
+                          )
+                      }
+                      <button
+                        type="button"
+                        className="w-full text-left px-3 py-2 text-sm text-[var(--color-primary)] font-medium hover:bg-[var(--color-surface-raised)] transition-colors border-t border-[var(--color-border)] rounded-b-[var(--radius-lg)]"
+                        onClick={openNewCustomerDialog}
+                      >
+                        + Add as new customer
+                      </button>
                     </div>
                   )}
                 </div>
@@ -194,9 +247,20 @@ export default function NewBillPage() {
                 />
               </div>
               <div className="flex items-center gap-3">
-                <Switch checked={isInterState} onCheckedChange={setIsInterState} />
-                <Label>Inter-state sale (IGST instead of CGST+SGST)</Label>
+                <Switch checked={isGstEnabled} onCheckedChange={setIsGstEnabled} />
+                <div>
+                  <Label>Charge GST</Label>
+                  {!isGstEnabled && (
+                    <p className="text-xs text-[var(--color-muted)] mt-0.5">GST disabled — prices are inclusive / unregistered business</p>
+                  )}
+                </div>
               </div>
+              {isGstEnabled && (
+                <div className="flex items-center gap-3">
+                  <Switch checked={isInterState} onCheckedChange={setIsInterState} />
+                  <Label>Inter-state sale (IGST instead of CGST+SGST)</Label>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -337,22 +401,29 @@ export default function NewBillPage() {
                     <span>- {formatINR(totals.totalDiscount)}</span>
                   </div>
                 )}
-                {isInterState ? (
-                  <div className="flex justify-between">
-                    <span className="text-[var(--color-muted)]">IGST</span>
-                    <span>{formatINR(totals.totalIgst)}</span>
-                  </div>
+                {isGstEnabled ? (
+                  isInterState ? (
+                    <div className="flex justify-between">
+                      <span className="text-[var(--color-muted)]">IGST</span>
+                      <span>{formatINR(totals.totalIgst)}</span>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-[var(--color-muted)]">CGST</span>
+                        <span>{formatINR(totals.totalCgst)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-[var(--color-muted)]">SGST</span>
+                        <span>{formatINR(totals.totalSgst)}</span>
+                      </div>
+                    </>
+                  )
                 ) : (
-                  <>
-                    <div className="flex justify-between">
-                      <span className="text-[var(--color-muted)]">CGST</span>
-                      <span>{formatINR(totals.totalCgst)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-[var(--color-muted)]">SGST</span>
-                      <span>{formatINR(totals.totalSgst)}</span>
-                    </div>
-                  </>
+                  <div className="flex justify-between text-[var(--color-muted)]">
+                    <span>GST</span>
+                    <span className="text-xs italic">Not applicable</span>
+                  </div>
                 )}
                 {totals.roundOff !== 0 && (
                   <div className="flex justify-between text-[var(--color-muted)]">
@@ -427,6 +498,33 @@ export default function NewBillPage() {
           </Card>
         </div>
       </div>
+
+      <Dialog open={showNewCustomerDialog} onOpenChange={(open) => !open && setShowNewCustomerDialog(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add New Customer</DialogTitle>
+            <DialogDescription>Create a new customer record and select them for this bill.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <Label>Name</Label>
+              <Input value={newCustomerName} onChange={(e) => setNewCustomerName(e.target.value)} className="mt-1" autoFocus />
+            </div>
+            <div>
+              <Label>Phone</Label>
+              <Input value={newCustomerPhone} onChange={(e) => setNewCustomerPhone(e.target.value)} placeholder="10-digit mobile" className="mt-1" />
+            </div>
+            <div>
+              <Label>Email <span className="text-[var(--color-muted)]">(optional)</span></Label>
+              <Input value={newCustomerEmail} onChange={(e) => setNewCustomerEmail(e.target.value)} type="email" className="mt-1" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowNewCustomerDialog(false)}>Cancel</Button>
+            <Button variant="primary" loading={createCustomer.isPending} onClick={handleAddNewCustomer}>Add Customer</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

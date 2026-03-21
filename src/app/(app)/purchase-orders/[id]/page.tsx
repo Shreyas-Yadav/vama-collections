@@ -1,28 +1,63 @@
 'use client'
 
-import { use } from 'react'
+import { use, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, ChevronDown } from 'lucide-react'
 import { PageHeader } from '@/components/layout/page-header'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Spinner } from '@/components/ui/spinner'
-import { usePurchaseOrder } from '@/hooks/use-purchase-orders'
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from '@/components/ui/dialog'
+import { usePurchaseOrder, useUpdatePOStatus } from '@/hooks/use-purchase-orders'
+import { useToast } from '@/providers/toast-provider'
 import { formatINR, formatDate } from '@/lib/format'
 import { PO_STATUS_LABELS } from '@/lib/constants'
+import type { POStatus } from '@/types/purchase-order'
 
 const statusVariant: Record<string, 'default' | 'success' | 'warning' | 'danger' | 'info'> = {
   DRAFT: 'default', SENT: 'info', PARTIALLY_RECEIVED: 'warning', RECEIVED: 'success', CANCELLED: 'danger',
+}
+
+const STATUS_TRANSITIONS: Record<POStatus, POStatus[]> = {
+  DRAFT:              ['SENT', 'CANCELLED'],
+  SENT:               ['PARTIALLY_RECEIVED', 'RECEIVED', 'CANCELLED'],
+  PARTIALLY_RECEIVED: ['RECEIVED', 'CANCELLED'],
+  RECEIVED:           [],
+  CANCELLED:          [],
 }
 
 export default function PurchaseOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const router = useRouter()
   const { data: po, isLoading } = usePurchaseOrder(id)
+  const updateStatus = useUpdatePOStatus()
+  const { toast } = useToast()
+
+  const [pendingStatus, setPendingStatus] = useState<POStatus | null>(null)
+
+  const handleConfirm = async () => {
+    if (!pendingStatus) return
+    try {
+      await updateStatus.mutateAsync({ id, status: pendingStatus })
+      toast({ title: `Status updated to "${PO_STATUS_LABELS[pendingStatus]}"`, variant: 'success' })
+    } catch {
+      toast({ title: 'Failed to update status', variant: 'error' })
+    } finally {
+      setPendingStatus(null)
+    }
+  }
 
   if (isLoading) return <div className="flex justify-center py-20"><Spinner size="lg" /></div>
   if (!po) return <p className="text-center py-20 text-[var(--color-muted)]">Purchase order not found</p>
+
+  const nextStatuses = STATUS_TRANSITIONS[po.status]
+  const isCancelling = pendingStatus === 'CANCELLED'
 
   return (
     <div>
@@ -32,6 +67,33 @@ export default function PurchaseOrderDetailPage({ params }: { params: Promise<{ 
         action={
           <div className="flex gap-2 items-center">
             <Badge variant={statusVariant[po.status] ?? 'default'}>{PO_STATUS_LABELS[po.status]}</Badge>
+            {nextStatuses.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    Update Status <ChevronDown className="h-3.5 w-3.5 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {nextStatuses.filter((s) => s !== 'CANCELLED').map((s) => (
+                    <DropdownMenuItem key={s} onClick={() => setPendingStatus(s)}>
+                      {PO_STATUS_LABELS[s]}
+                    </DropdownMenuItem>
+                  ))}
+                  {nextStatuses.includes('CANCELLED') && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => setPendingStatus('CANCELLED')}
+                        className="text-[var(--color-danger)] focus:text-[var(--color-danger)]"
+                      >
+                        {PO_STATUS_LABELS['CANCELLED']}
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
             <Button variant="outline" onClick={() => router.push('/purchase-orders')}>
               <ArrowLeft className="h-4 w-4" /> Back
             </Button>
@@ -100,6 +162,35 @@ export default function PurchaseOrderDetailPage({ params }: { params: Promise<{ 
           </Card>
         </div>
       </div>
+
+      {/* Confirmation dialog */}
+      <Dialog open={!!pendingStatus} onOpenChange={(open) => !open && setPendingStatus(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {isCancelling ? 'Cancel Purchase Order?' : 'Update Status?'}
+            </DialogTitle>
+            <DialogDescription>
+              {isCancelling
+                ? `This will cancel ${po.poNumber}. This action cannot be undone.`
+                : `Change status of ${po.poNumber} from "${PO_STATUS_LABELS[po.status]}" to "${pendingStatus ? PO_STATUS_LABELS[pendingStatus] : ''}"?`
+              }
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPendingStatus(null)}>
+              No, go back
+            </Button>
+            <Button
+              variant={isCancelling ? 'danger' : 'primary'}
+              loading={updateStatus.isPending}
+              onClick={handleConfirm}
+            >
+              {isCancelling ? 'Yes, Cancel PO' : 'Yes, Update'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

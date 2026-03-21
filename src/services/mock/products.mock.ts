@@ -249,3 +249,27 @@ export const mockProducts = {
     })
   },
 }
+
+export function deductStock(productId: string, quantity: number): void {
+  const idx = products.findIndex((p) => p.id === productId)
+  if (idx === -1) return
+  const newQty = Math.max(0, products[idx].quantityInStock - quantity)
+  products[idx] = {
+    ...products[idx],
+    quantityInStock: newQty,
+    stockStatus: deriveStockStatus(newQty, products[idx].lowStockThreshold),
+    updatedAt: new Date().toISOString(),
+  }
+}
+
+export function addStock(productId: string, quantity: number): void {
+  const idx = products.findIndex((p) => p.id === productId)
+  if (idx === -1) return
+  const newQty = products[idx].quantityInStock + quantity
+  products[idx] = {
+    ...products[idx],
+    quantityInStock: newQty,
+    stockStatus: deriveStockStatus(newQty, products[idx].lowStockThreshold),
+    updatedAt: new Date().toISOString(),
+  }
+}

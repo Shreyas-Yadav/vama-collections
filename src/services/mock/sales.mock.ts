@@ -2,6 +2,7 @@ import type { Bill, CreateBillDto } from '@/types'
 import type { PaginatedResponse } from '@/types/api'
 import { generateBillNumber } from '@/lib/format'
 import { calculateLineGST } from '@/lib/format'
+import { deductStock } from './products.mock'
 
 const now = new Date().toISOString()
 
@@ -9,7 +10,7 @@ let bills: Bill[] = [
   {
     id: 'b-1', billNumber: 'VAMA-2026-00001',
     customerId: 'cu-3', customerName: 'Lakshmi Venkataraman', customerPhone: '9444556677',
-    status: 'PAID', isInterState: false,
+    status: 'PAID', isInterState: false, isGstEnabled: true,
     lineItems: [
       {
         id: 'bli-1', productId: 'p-1', productName: 'Royal Crimson Kanjivaram Saree', sku: 'SA-KJ-001',
@@ -27,7 +28,7 @@ let bills: Bill[] = [
     id: 'b-2', billNumber: 'VAMA-2026-00002',
     customerId: 'cu-5', customerName: 'Meera Agarwal', customerPhone: '9911223344',
     customerGstin: '07AABCA1234B1Z5',
-    status: 'PAID', isInterState: true,
+    status: 'PAID', isInterState: true, isGstEnabled: true,
     lineItems: [
       {
         id: 'bli-2', productId: 'p-3', productName: 'Gold Woven Banarasi Saree', sku: 'SA-BA-001',
@@ -44,7 +45,7 @@ let bills: Bill[] = [
   {
     id: 'b-3', billNumber: 'VAMA-2026-00003',
     customerName: 'Walk-in Customer', customerPhone: '9876543000',
-    status: 'PAID', isInterState: false,
+    status: 'PAID', isInterState: false, isGstEnabled: true,
     lineItems: [
       {
         id: 'bli-3', productId: 'p-5', productName: 'Kerala Kasavu Cotton Saree', sku: 'SA-CT-001',
@@ -67,7 +68,7 @@ let bills: Bill[] = [
   {
     id: 'b-4', billNumber: 'VAMA-2026-00004',
     customerId: 'cu-1', customerName: 'Priya Sharma', customerPhone: '9820112233',
-    status: 'PARTIALLY_PAID', isInterState: false,
+    status: 'PARTIALLY_PAID', isInterState: false, isGstEnabled: true,
     lineItems: [
       {
         id: 'bli-5', productId: 'p-11', productName: 'Bridal Red Lehenga Choli', sku: 'LH-BR-001',
@@ -133,7 +134,7 @@ export const mockSales = {
   create(dto: CreateBillDto): Promise<Bill> {
     return new Promise((resolve) => {
       setTimeout(() => {
-        const { isInterState } = dto
+        const { isInterState, isGstEnabled } = dto
         let subtotal = 0
         let totalDiscount = 0
         let totalCgst = 0
@@ -144,7 +145,7 @@ export const mockSales = {
           const gross = li.quantity * li.unitPrice
           const discountAmount = Math.round((gross * li.discountPercent) / 100)
           const taxableAmount = gross - discountAmount
-          const gst = calculateLineGST(taxableAmount, li.gstSlab, isInterState)
+          const gst = calculateLineGST(taxableAmount, li.gstSlab, isInterState, isGstEnabled)
           subtotal += taxableAmount
           totalDiscount += discountAmount
           totalCgst += gst.cgst
@@ -192,8 +193,61 @@ export const mockSales = {
           updatedAt: new Date().toISOString(),
         }
         bills.push(bill)
+        for (const li of bill.lineItems) {
+          if (li.productId) deductStock(li.productId, li.quantity)
+        }
         resolve(bill)
       }, 400)
+    })
+  },
+
+  updateStatus(id: string, status: Bill['status']): Promise<Bill> {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        const idx = bills.findIndex((b) => b.id === id)
+        if (idx === -1) return reject(new Error('Bill not found'))
+        const updated = {
+          ...bills[idx],
+          status,
+          amountPaid: status === 'PAID' ? bills[idx].grandTotal : bills[idx].amountPaid,
+          balanceDue: status === 'PAID' ? 0 : bills[idx].balanceDue,
+          updatedAt: new Date().toISOString(),
+        }
+        bills[idx] = updated
+        resolve(updated)
+      }, 300)
+    })
+  },
+
+  recordPayment(id: string, dto: { amount: number; paymentMethod: string; note?: string }): Promise<Bill> {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        const idx = bills.findIndex((b) => b.id === id)
+        if (idx === -1) return reject(new Error('Bill not found'))
+        const newAmountPaid = bills[idx].amountPaid + dto.amount
+        const newBalanceDue = Math.max(0, bills[idx].grandTotal - newAmountPaid)
+        const newStatus = newBalanceDue <= 0 ? 'PAID' : 'PARTIALLY_PAID'
+        bills[idx] = {
+          ...bills[idx],
+          amountPaid: newAmountPaid,
+          balanceDue: newBalanceDue,
+          status: newStatus,
+          paymentDetails: dto.note ?? bills[idx].paymentDetails,
+          updatedAt: new Date().toISOString(),
+        }
+        resolve(bills[idx])
+      }, 300)
+    })
+  },
+
+  listByCustomer(customerId: string): Promise<Bill[]> {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        const result = bills
+          .filter((b) => b.customerId === customerId)
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        resolve(result)
+      }, 200)
     })
   },
 

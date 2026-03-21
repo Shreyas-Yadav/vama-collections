@@ -30,6 +30,7 @@ export interface Bill {
   customerGstin?: string
   status: BillStatus
   isInterState: boolean
+  isGstEnabled: boolean
   lineItems: BillLineItem[]
   subtotal: number         // paise
   totalDiscount: number    // paise

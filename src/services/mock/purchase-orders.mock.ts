@@ -1,6 +1,7 @@
 import type { PurchaseOrder, CreatePODto } from '@/types'
 import type { PaginatedResponse } from '@/types/api'
 import { generatePONumber } from '@/lib/format'
+import { addStock } from './products.mock'
 
 const now = new Date().toISOString()
 
@@ -132,6 +133,11 @@ export const mockPurchaseOrders = {
           status,
           receivedDate: status === 'RECEIVED' ? new Date().toISOString() : purchaseOrders[idx].receivedDate,
           updatedAt: new Date().toISOString(),
+        }
+        if (status === 'RECEIVED' || status === 'PARTIALLY_RECEIVED') {
+          for (const li of purchaseOrders[idx].lineItems) {
+            if (li.productId) addStock(li.productId, li.quantity)
+          }
         }
         resolve(purchaseOrders[idx])
       }, 300)

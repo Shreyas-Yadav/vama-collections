@@ -1,29 +1,92 @@
 'use client'
 
-import { use } from 'react'
+import { use, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Printer } from 'lucide-react'
+import { ArrowLeft, Printer, ChevronDown } from 'lucide-react'
 import { PageHeader } from '@/components/layout/page-header'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { Spinner } from '@/components/ui/spinner'
-import { useSale } from '@/hooks/use-sales'
-import { formatINR, formatDateTime } from '@/lib/format'
-import { BILL_STATUS_LABELS, PAYMENT_METHOD_LABELS } from '@/lib/constants'
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useSale, useUpdateBillStatus, useRecordPayment } from '@/hooks/use-sales'
+import { useToast } from '@/providers/toast-provider'
+import { formatINR, formatDateTime, paiToRupees } from '@/lib/format'
+import { BILL_STATUS_LABELS, PAYMENT_METHODS, PAYMENT_METHOD_LABELS } from '@/lib/constants'
+import type { BillStatus } from '@/types/sale'
 
 const statusVariant: Record<string, 'default' | 'success' | 'warning' | 'danger'> = {
   DRAFT: 'default', PAID: 'success', PARTIALLY_PAID: 'warning', CANCELLED: 'danger',
+}
+
+const STATUS_TRANSITIONS: Record<BillStatus, BillStatus[]> = {
+  DRAFT:          ['PAID', 'PARTIALLY_PAID', 'CANCELLED'],
+  PARTIALLY_PAID: ['PAID', 'CANCELLED'],
+  PAID:           [],
+  CANCELLED:      [],
 }
 
 export default function BillDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const router = useRouter()
   const { data: bill, isLoading } = useSale(id)
+  const updateStatus = useUpdateBillStatus()
+  const recordPayment = useRecordPayment()
+  const { toast } = useToast()
+  const [pendingStatus, setPendingStatus] = useState<BillStatus | null>(null)
+  const [showPaymentDialog, setShowPaymentDialog] = useState(false)
+  const [paymentAmount, setPaymentAmount] = useState('')
+  const [paymentMethod, setPaymentMethod] = useState('CASH')
+  const [paymentNote, setPaymentNote] = useState('')
+
+  const handleConfirm = async () => {
+    if (!pendingStatus) return
+    try {
+      await updateStatus.mutateAsync({ id, status: pendingStatus })
+      toast({ title: `Bill marked as "${BILL_STATUS_LABELS[pendingStatus]}"`, variant: 'success' })
+    } catch {
+      toast({ title: 'Failed to update status', variant: 'error' })
+    } finally {
+      setPendingStatus(null)
+    }
+  }
+
+  const handleReceivePayment = async () => {
+    if (!bill) return
+    const amountPaise = Math.round(parseFloat(paymentAmount) * 100)
+    if (!amountPaise || amountPaise <= 0) {
+      toast({ title: 'Enter a valid amount', variant: 'warning' })
+      return
+    }
+    if (amountPaise > bill.balanceDue) {
+      toast({ title: 'Amount exceeds balance due', variant: 'warning' })
+      return
+    }
+    try {
+      await recordPayment.mutateAsync({ id, amount: amountPaise, paymentMethod, note: paymentNote || undefined })
+      toast({ title: 'Payment recorded', variant: 'success' })
+      setShowPaymentDialog(false)
+      setPaymentAmount('')
+      setPaymentNote('')
+    } catch {
+      toast({ title: 'Failed to record payment', variant: 'error' })
+    }
+  }
 
   if (isLoading) return <div className="flex justify-center py-20"><Spinner size="lg" /></div>
   if (!bill) return <p className="text-center py-20 text-[var(--color-muted)]">Bill not found</p>
+
+  const nextStatuses = STATUS_TRANSITIONS[bill.status]
+  const isCancelling = pendingStatus === 'CANCELLED'
 
   return (
     <div>
@@ -31,7 +94,49 @@ export default function BillDetailPage({ params }: { params: Promise<{ id: strin
         title={bill.billNumber}
         description={`${formatDateTime(bill.createdAt)}`}
         action={
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
+            <Badge variant={statusVariant[bill.status] ?? 'default'}>{BILL_STATUS_LABELS[bill.status]}</Badge>
+            {nextStatuses.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    Update Status <ChevronDown className="h-3.5 w-3.5 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {nextStatuses.filter((s) => s !== 'CANCELLED').map((s) => (
+                    <DropdownMenuItem key={s} onClick={() => setPendingStatus(s)}>
+                      {BILL_STATUS_LABELS[s]}
+                    </DropdownMenuItem>
+                  ))}
+                  {nextStatuses.includes('CANCELLED') && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => setPendingStatus('CANCELLED')}
+                        className="text-[var(--color-danger)] focus:text-[var(--color-danger)]"
+                      >
+                        {BILL_STATUS_LABELS['CANCELLED']}
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+            {bill.balanceDue > 0 && (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => {
+                  setPaymentAmount(paiToRupees(bill.balanceDue).toFixed(2))
+                  setPaymentMethod('CASH')
+                  setPaymentNote('')
+                  setShowPaymentDialog(true)
+                }}
+              >
+                Receive Payment
+              </Button>
+            )}
             <Button variant="outline" onClick={() => router.push('/sales')}>
               <ArrowLeft className="h-4 w-4" /> Back
             </Button>
@@ -97,9 +202,11 @@ export default function BillDetailPage({ params }: { params: Promise<{ id: strin
                         <td className="px-4 py-3">{li.discountPercent > 0 ? `${li.discountPercent}%` : '—'}</td>
                         <td className="px-4 py-3">{formatINR(li.taxableAmount)}</td>
                         <td className="px-4 py-3 text-xs">
-                          {bill.isInterState
-                            ? `IGST ${li.gstSlab}%`
-                            : `CGST+SGST ${li.gstSlab}%`}
+                          {!bill.isGstEnabled
+                            ? <span className="text-[var(--color-muted)]">—</span>
+                            : bill.isInterState
+                              ? `IGST ${li.gstSlab}%`
+                              : `CGST+SGST ${li.gstSlab}%`}
                         </td>
                         <td className="px-4 py-3 font-semibold">{formatINR(li.lineTotal)}</td>
                       </tr>
@@ -131,22 +238,29 @@ export default function BillDetailPage({ params }: { params: Promise<{ id: strin
                   <span>- {formatINR(bill.totalDiscount)}</span>
                 </div>
               )}
-              {bill.isInterState ? (
-                <div className="flex justify-between">
-                  <span className="text-[var(--color-muted)]">IGST</span>
-                  <span>{formatINR(bill.totalIgst)}</span>
-                </div>
+              {bill.isGstEnabled ? (
+                bill.isInterState ? (
+                  <div className="flex justify-between">
+                    <span className="text-[var(--color-muted)]">IGST</span>
+                    <span>{formatINR(bill.totalIgst)}</span>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-[var(--color-muted)]">CGST</span>
+                      <span>{formatINR(bill.totalCgst)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-[var(--color-muted)]">SGST</span>
+                      <span>{formatINR(bill.totalSgst)}</span>
+                    </div>
+                  </>
+                )
               ) : (
-                <>
-                  <div className="flex justify-between">
-                    <span className="text-[var(--color-muted)]">CGST</span>
-                    <span>{formatINR(bill.totalCgst)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[var(--color-muted)]">SGST</span>
-                    <span>{formatINR(bill.totalSgst)}</span>
-                  </div>
-                </>
+                <div className="flex justify-between text-[var(--color-muted)]">
+                  <span>GST</span>
+                  <span className="text-xs italic">Not applicable</span>
+                </div>
               )}
               {bill.roundOff !== 0 && (
                 <div className="flex justify-between text-[var(--color-muted)]">
@@ -179,6 +293,81 @@ export default function BillDetailPage({ params }: { params: Promise<{ id: strin
           </Card>
         </div>
       </div>
+
+      <Dialog open={showPaymentDialog} onOpenChange={(open) => !open && setShowPaymentDialog(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Receive Payment</DialogTitle>
+            <DialogDescription>
+              Balance due: <strong>{formatINR(bill.balanceDue)}</strong>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <Label>Amount (₹)</Label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0.01"
+                value={paymentAmount}
+                onChange={(e) => setPaymentAmount(e.target.value)}
+                className="mt-1"
+                autoFocus
+              />
+            </div>
+            <div>
+              <Label>Payment Method</Label>
+              <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {PAYMENT_METHODS.map((m) => (
+                    <SelectItem key={m} value={m}>{PAYMENT_METHOD_LABELS[m]}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Reference / Note <span className="text-[var(--color-muted)]">(optional)</span></Label>
+              <Input
+                value={paymentNote}
+                onChange={(e) => setPaymentNote(e.target.value)}
+                placeholder="UPI ref, cheque no., etc."
+                className="mt-1"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPaymentDialog(false)}>Cancel</Button>
+            <Button variant="primary" loading={recordPayment.isPending} onClick={handleReceivePayment}>
+              Record Payment
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!pendingStatus} onOpenChange={(open) => !open && setPendingStatus(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{isCancelling ? 'Cancel Bill?' : 'Update Bill Status?'}</DialogTitle>
+            <DialogDescription>
+              {isCancelling
+                ? `This will cancel ${bill.billNumber}. This action cannot be undone.`
+                : `Mark ${bill.billNumber} as "${pendingStatus ? BILL_STATUS_LABELS[pendingStatus] : ''}"?`
+              }
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPendingStatus(null)}>No, go back</Button>
+            <Button
+              variant={isCancelling ? 'danger' : 'primary'}
+              loading={updateStatus.isPending}
+              onClick={handleConfirm}
+            >
+              {isCancelling ? 'Yes, Cancel Bill' : 'Yes, Update'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -51,8 +51,12 @@ export interface LineItemGST {
 export function calculateLineGST(
   taxableAmount: number,
   gstSlab: GSTSlab,
-  isInterState: boolean
+  isInterState: boolean,
+  isGstEnabled = true,
 ): LineItemGST {
+  if (!isGstEnabled) {
+    return { gstSlab, taxableAmount, cgst: 0, sgst: 0, igst: 0, lineTotal: taxableAmount }
+  }
   const gstAmount = Math.round((taxableAmount * gstSlab) / 100)
   if (isInterState) {
     return { gstSlab, taxableAmount, cgst: 0, sgst: 0, igst: gstAmount, lineTotal: taxableAmount + gstAmount }
@@ -81,7 +85,8 @@ export interface BillLineInput {
 
 export function calculateBill(
   lines: BillLineInput[],
-  isInterState: boolean
+  isInterState: boolean,
+  isGstEnabled = true,
 ): BillTotals {
   let subtotal = 0
   let totalDiscount = 0
@@ -93,7 +98,7 @@ export function calculateBill(
     const gross = line.quantity * line.unitPrice
     const discount = Math.round((gross * line.discountPercent) / 100)
     const taxable = gross - discount
-    const gst = calculateLineGST(taxable, line.gstSlab, isInterState)
+    const gst = calculateLineGST(taxable, line.gstSlab, isInterState, isGstEnabled)
 
     subtotal += taxable
     totalDiscount += discount

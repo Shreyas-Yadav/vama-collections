@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { salesService } from '@/services/sales.service'
-import type { CreateBillDto } from '@/types'
+import type { Bill, CreateBillDto } from '@/types'
 
 export const saleKeys = {
   all: ['sales'] as const,
@@ -11,6 +11,7 @@ export const saleKeys = {
   details: () => [...saleKeys.all, 'detail'] as const,
   detail: (id: string) => [...saleKeys.details(), id] as const,
   stats: () => [...saleKeys.all, 'stats', 'dashboard'] as const,
+  byCustomer: (customerId: string) => [...saleKeys.all, 'customer', customerId] as const,
 }
 
 export function useSales(params: {
@@ -49,5 +50,39 @@ export function useCreateBill() {
       qc.invalidateQueries({ queryKey: saleKeys.lists() })
       qc.invalidateQueries({ queryKey: saleKeys.stats() })
     },
+  })
+}
+
+export function useUpdateBillStatus() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, status }: { id: string; status: Bill['status'] }) =>
+      salesService.updateStatus(id, status),
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: saleKeys.detail(id) })
+      qc.invalidateQueries({ queryKey: saleKeys.lists() })
+      qc.invalidateQueries({ queryKey: saleKeys.stats() })
+    },
+  })
+}
+
+export function useRecordPayment() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, ...dto }: { id: string; amount: number; paymentMethod: string; note?: string }) =>
+      salesService.recordPayment(id, dto),
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: saleKeys.detail(id) })
+      qc.invalidateQueries({ queryKey: saleKeys.lists() })
+      qc.invalidateQueries({ queryKey: saleKeys.stats() })
+    },
+  })
+}
+
+export function useCustomerBills(customerId: string) {
+  return useQuery({
+    queryKey: saleKeys.byCustomer(customerId),
+    queryFn: () => salesService.listByCustomer(customerId),
+    enabled: !!customerId,
   })
 }

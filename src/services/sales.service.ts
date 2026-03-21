@@ -28,6 +28,21 @@ export const salesService = {
     return apiClient.post('/api/v1/bills', dto)
   },
 
+  updateStatus(id: string, status: Bill['status']): Promise<Bill> {
+    if (USE_MOCK) return mockSales.updateStatus(id, status)
+    return apiClient.patch(`/api/v1/bills/${id}/status`, { status })
+  },
+
+  recordPayment(id: string, dto: { amount: number; paymentMethod: string; note?: string }): Promise<Bill> {
+    if (USE_MOCK) return mockSales.recordPayment(id, dto)
+    return apiClient.patch(`/api/v1/bills/${id}/payment`, dto)
+  },
+
+  listByCustomer(customerId: string): Promise<Bill[]> {
+    if (USE_MOCK) return mockSales.listByCustomer(customerId)
+    return apiClient.get('/api/v1/bills', { customerId })
+  },
+
   getDashboardStats(): Promise<{
     todaySales: number
     todayBills: number

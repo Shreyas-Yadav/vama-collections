@@ -39,7 +39,7 @@ export type CreatePOLineItemDto = Omit<POLineItem, 'id' | 'productName' | 'sku' 
 
 export type CreatePODto = Omit<
   PurchaseOrder,
-  'id' | 'poNumber' | 'vendorName' | 'createdAt' | 'updatedAt' | 'subtotal' | 'totalGst' | 'totalAmount'
+  'id' | 'poNumber' | 'vendorName' | 'createdAt' | 'updatedAt' | 'subtotal' | 'totalGst' | 'totalAmount' | 'lineItems'
 > & {
   lineItems: CreatePOLineItemDto[]
 }

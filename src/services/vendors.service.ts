@@ -4,7 +4,7 @@ import { USE_MOCK, apiClient } from './api-client'
 import { mockVendors } from './mock/vendors.mock'
 
 export const vendorsService = {
-  list(params: { page: number; pageSize: number; search?: string }): Promise<PaginatedResponse<Vendor>> {
+  list(params: { page: number; pageSize: number; search?: string; sortKey?: string; sortDir?: 'asc' | 'desc' }): Promise<PaginatedResponse<Vendor>> {
     if (USE_MOCK) return mockVendors.list(params)
     return apiClient.get('/api/v1/vendors', params as Record<string, unknown>)
   },

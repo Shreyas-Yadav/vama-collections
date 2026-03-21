@@ -9,6 +9,8 @@ export const purchaseOrdersService = {
     pageSize: number
     search?: string
     status?: string
+    sortKey?: string
+    sortDir?: 'asc' | 'desc'
   }): Promise<PaginatedResponse<PurchaseOrder>> {
     if (USE_MOCK) return mockPurchaseOrders.list(params)
     return apiClient.get('/api/v1/purchase-orders', params as Record<string, unknown>)

@@ -1,5 +1,6 @@
 import type { Product, CreateProductDto, UpdateProductDto } from '@/types'
 import type { PaginatedResponse } from '@/types/api'
+import { sortItems } from './sort'
 
 const now = new Date().toISOString()
 
@@ -162,6 +163,8 @@ export const mockProducts = {
     stockStatus?: string
     productType?: string
     vendorId?: string
+    sortKey?: string
+    sortDir?: 'asc' | 'desc'
   }): Promise<PaginatedResponse<Product>> {
     return new Promise((resolve) => {
       setTimeout(() => {
@@ -179,6 +182,7 @@ export const mockProducts = {
         if (params.stockStatus) filtered = filtered.filter((p) => p.stockStatus === params.stockStatus)
         if (params.productType) filtered = filtered.filter((p) => p.productType === params.productType)
         if (params.vendorId) filtered = filtered.filter((p) => p.vendorId === params.vendorId)
+        filtered = sortItems(filtered as unknown as Record<string, unknown>[], params.sortKey ?? 'name', params.sortDir ?? 'asc') as unknown as Product[]
         resolve(paginate(filtered, params.page, params.pageSize))
       }, 250)
     })

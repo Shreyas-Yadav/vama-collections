@@ -21,6 +21,8 @@ export function useProducts(params: {
   stockStatus?: string
   productType?: string
   vendorId?: string
+  sortKey?: string
+  sortDir?: 'asc' | 'desc'
 }) {
   return useQuery({
     queryKey: productKeys.list(params),

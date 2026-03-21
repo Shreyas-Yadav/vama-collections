@@ -19,6 +19,8 @@ export function useSales(params: {
   pageSize: number
   search?: string
   status?: string
+  sortKey?: string
+  sortDir?: 'asc' | 'desc'
 }) {
   return useQuery({
     queryKey: saleKeys.list(params),

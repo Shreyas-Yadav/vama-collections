@@ -17,6 +17,8 @@ export function usePurchaseOrders(params: {
   pageSize: number
   search?: string
   status?: string
+  sortKey?: string
+  sortDir?: 'asc' | 'desc'
 }) {
   return useQuery({
     queryKey: poKeys.list(params),

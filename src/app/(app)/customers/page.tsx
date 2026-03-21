@@ -10,6 +10,7 @@ import { DataTableToolbar } from '@/components/data-table/data-table-toolbar'
 import { DataTablePagination } from '@/components/data-table/data-table-pagination'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Badge } from '@/components/ui/badge'
+import { SortableHeader } from '@/components/ui/sortable-header'
 import { useCustomers } from '@/hooks/use-customers'
 import { formatINR, formatDate } from '@/lib/format'
 import { PAGE_SIZE_DEFAULT } from '@/lib/constants'
@@ -21,13 +22,21 @@ export default function CustomersPage() {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGE_SIZE_DEFAULT)
   const [search, setSearch] = useState('')
+  const [sortKey, setSortKey] = useState('name')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
 
-  const { data, isLoading } = useCustomers({ page, pageSize, search })
+  const handleSort = (key: string) => {
+    if (key === sortKey) { setSortDir((d) => d === 'asc' ? 'desc' : 'asc') }
+    else { setSortKey(key); setSortDir('asc') }
+    setPage(1)
+  }
+
+  const { data, isLoading } = useCustomers({ page, pageSize, search, sortKey, sortDir })
 
   const columns: ColumnDef<Customer, unknown>[] = [
     {
       accessorKey: 'name',
-      header: 'Customer',
+      header: () => <SortableHeader label="Customer" sortKey="name" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} />,
       cell: ({ row }) => (
         <div>
           <p className="font-medium">{row.original.name}</p>
@@ -43,12 +52,12 @@ export default function CustomersPage() {
     },
     {
       accessorKey: 'totalOrders',
-      header: 'Orders',
+      header: () => <SortableHeader label="Orders" sortKey="totalOrders" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} />,
       size: 80,
     },
     {
       accessorKey: 'totalPurchaseValue',
-      header: 'Total Purchases',
+      header: () => <SortableHeader label="Total Purchases" sortKey="totalPurchaseValue" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} />,
       size: 140,
       cell: ({ row }) => (
         <span className="font-medium">{formatINR(row.original.totalPurchaseValue)}</span>
@@ -56,7 +65,7 @@ export default function CustomersPage() {
     },
     {
       accessorKey: 'loyaltyPoints',
-      header: 'Points',
+      header: () => <SortableHeader label="Points" sortKey="loyaltyPoints" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} />,
       size: 80,
       cell: ({ row }) => (
         <span className="text-[var(--color-accent)] font-medium">{row.original.loyaltyPoints}</span>
@@ -64,7 +73,7 @@ export default function CustomersPage() {
     },
     {
       accessorKey: 'lastPurchaseDate',
-      header: 'Last Purchase',
+      header: () => <SortableHeader label="Last Purchase" sortKey="lastPurchaseDate" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} />,
       size: 130,
       cell: ({ row }) =>
         row.original.lastPurchaseDate

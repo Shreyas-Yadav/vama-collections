@@ -11,6 +11,7 @@ import { DataTableToolbar } from '@/components/data-table/data-table-toolbar'
 import { DataTablePagination } from '@/components/data-table/data-table-pagination'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+import { SortableHeader } from '@/components/ui/sortable-header'
 import { useVendors, useDeleteVendor } from '@/hooks/use-vendors'
 import { useToast } from '@/providers/toast-provider'
 import { formatINR } from '@/lib/format'
@@ -58,14 +59,22 @@ export default function VendorsPage() {
   const [pageSize, setPageSize] = useState(PAGE_SIZE_DEFAULT)
   const [search, setSearch] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<Vendor | null>(null)
+  const [sortKey, setSortKey] = useState('name')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
 
-  const { data, isLoading } = useVendors({ page, pageSize, search })
+  const handleSort = (key: string) => {
+    if (key === sortKey) { setSortDir((d) => d === 'asc' ? 'desc' : 'asc') }
+    else { setSortKey(key); setSortDir('asc') }
+    setPage(1)
+  }
+
+  const { data, isLoading } = useVendors({ page, pageSize, search, sortKey, sortDir })
   const deleteVendor = useDeleteVendor()
 
   const columns: ColumnDef<Vendor, unknown>[] = [
     {
       accessorKey: 'name',
-      header: 'Vendor Name',
+      header: () => <SortableHeader label="Vendor Name" sortKey="name" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} />,
       cell: ({ row }) => (
         <div>
           <p className="font-medium">{row.original.name}</p>
@@ -80,25 +89,25 @@ export default function VendorsPage() {
     },
     {
       accessorKey: 'city',
-      header: 'Location',
+      header: () => <SortableHeader label="Location" sortKey="city" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} />,
       cell: ({ row }) => `${row.original.city}, ${row.original.state}`,
     },
     {
       accessorKey: 'vendorType',
-      header: 'Type',
+      header: () => <SortableHeader label="Type" sortKey="vendorType" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} />,
       cell: ({ row }) => (
         <Badge variant="outline">{VENDOR_TYPE_LABELS[row.original.vendorType]}</Badge>
       ),
     },
     {
       accessorKey: 'creditPeriodDays',
-      header: 'Credit Days',
+      header: () => <SortableHeader label="Credit Days" sortKey="creditPeriodDays" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} />,
       size: 100,
       cell: ({ row }) => `${row.original.creditPeriodDays} days`,
     },
     {
       accessorKey: 'totalPurchaseValue',
-      header: 'Total Purchases',
+      header: () => <SortableHeader label="Total Purchases" sortKey="totalPurchaseValue" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} />,
       size: 140,
       cell: ({ row }) => (
         <span className="font-medium">{formatINR(row.original.totalPurchaseValue)}</span>
@@ -106,7 +115,7 @@ export default function VendorsPage() {
     },
     {
       accessorKey: 'isActive',
-      header: 'Status',
+      header: () => <SortableHeader label="Status" sortKey="isActive" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} />,
       size: 80,
       cell: ({ row }) => (
         <Badge variant={row.original.isActive ? 'success' : 'default'}>

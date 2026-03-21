@@ -11,6 +11,7 @@ import { DataTable } from '@/components/data-table/data-table'
 import { DataTableToolbar } from '@/components/data-table/data-table-toolbar'
 import { DataTablePagination } from '@/components/data-table/data-table-pagination'
 import { EmptyState } from '@/components/ui/empty-state'
+import { SortableHeader } from '@/components/ui/sortable-header'
 import { usePurchaseOrders } from '@/hooks/use-purchase-orders'
 import { formatINR, formatDate } from '@/lib/format'
 import { PO_STATUS_LABELS, PAGE_SIZE_DEFAULT } from '@/lib/constants'
@@ -31,13 +32,21 @@ export default function PurchaseOrdersPage() {
   const [pageSize, setPageSize] = useState(PAGE_SIZE_DEFAULT)
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('')
+  const [sortKey, setSortKey] = useState('createdAt')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
 
-  const { data, isLoading } = usePurchaseOrders({ page, pageSize, search, status: status || undefined })
+  const handleSort = (key: string) => {
+    if (key === sortKey) { setSortDir((d) => d === 'asc' ? 'desc' : 'asc') }
+    else { setSortKey(key); setSortDir('asc') }
+    setPage(1)
+  }
+
+  const { data, isLoading } = usePurchaseOrders({ page, pageSize, search, status: status || undefined, sortKey, sortDir })
 
   const columns: ColumnDef<PurchaseOrder, unknown>[] = [
     {
       accessorKey: 'poNumber',
-      header: 'PO Number',
+      header: () => <SortableHeader label="PO Number" sortKey="poNumber" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} />,
       size: 150,
       cell: ({ row }) => (
         <span className="font-mono text-sm font-medium">{row.original.poNumber}</span>
@@ -45,18 +54,18 @@ export default function PurchaseOrdersPage() {
     },
     {
       accessorKey: 'vendorName',
-      header: 'Vendor',
+      header: () => <SortableHeader label="Vendor" sortKey="vendorName" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} />,
       cell: ({ row }) => row.original.vendorName,
     },
     {
       accessorKey: 'orderDate',
-      header: 'Order Date',
+      header: () => <SortableHeader label="Order Date" sortKey="orderDate" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} />,
       size: 120,
       cell: ({ row }) => formatDate(row.original.orderDate + 'T00:00:00Z'),
     },
     {
       accessorKey: 'expectedDeliveryDate',
-      header: 'Expected By',
+      header: () => <SortableHeader label="Expected By" sortKey="expectedDeliveryDate" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} />,
       size: 130,
       cell: ({ row }) =>
         row.original.expectedDeliveryDate
@@ -71,7 +80,7 @@ export default function PurchaseOrdersPage() {
     },
     {
       accessorKey: 'totalAmount',
-      header: 'Amount',
+      header: () => <SortableHeader label="Amount" sortKey="totalAmount" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} />,
       size: 130,
       cell: ({ row }) => (
         <span className="font-medium">{formatINR(row.original.totalAmount)}</span>
@@ -79,7 +88,7 @@ export default function PurchaseOrdersPage() {
     },
     {
       accessorKey: 'status',
-      header: 'Status',
+      header: () => <SortableHeader label="Status" sortKey="status" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} />,
       size: 150,
       cell: ({ row }) => (
         <Badge variant={statusVariant[row.original.status] ?? 'default'}>

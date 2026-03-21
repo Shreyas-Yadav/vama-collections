@@ -11,6 +11,8 @@ interface ProductListParams {
   stockStatus?: string
   productType?: string
   vendorId?: string
+  sortKey?: string
+  sortDir?: 'asc' | 'desc'
 }
 
 export const productsService = {

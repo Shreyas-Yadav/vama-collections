@@ -14,6 +14,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { useSales } from '@/hooks/use-sales'
 import { formatINR, formatDateTime } from '@/lib/format'
 import { BILL_STATUS_LABELS, PAYMENT_METHOD_LABELS, PAGE_SIZE_DEFAULT } from '@/lib/constants'
+import { SortableHeader } from '@/components/ui/sortable-header'
 import type { Bill } from '@/types'
 import type { ColumnDef } from '@tanstack/react-table'
 
@@ -30,13 +31,21 @@ export default function SalesPage() {
   const [pageSize, setPageSize] = useState(PAGE_SIZE_DEFAULT)
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('')
+  const [sortKey, setSortKey] = useState('createdAt')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
 
-  const { data, isLoading } = useSales({ page, pageSize, search, status: status || undefined })
+  const handleSort = (key: string) => {
+    if (key === sortKey) { setSortDir((d) => d === 'asc' ? 'desc' : 'asc') }
+    else { setSortKey(key); setSortDir('asc') }
+    setPage(1)
+  }
+
+  const { data, isLoading } = useSales({ page, pageSize, search, status: status || undefined, sortKey, sortDir })
 
   const columns: ColumnDef<Bill, unknown>[] = [
     {
       accessorKey: 'billNumber',
-      header: 'Bill #',
+      header: () => <SortableHeader label="Bill #" sortKey="billNumber" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} />,
       size: 160,
       cell: ({ row }) => (
         <span className="font-mono text-sm font-medium">{row.original.billNumber}</span>
@@ -44,7 +53,7 @@ export default function SalesPage() {
     },
     {
       accessorKey: 'customerName',
-      header: 'Customer',
+      header: () => <SortableHeader label="Customer" sortKey="customerName" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} />,
       cell: ({ row }) => (
         <div>
           <p className="font-medium">{row.original.customerName}</p>
@@ -62,7 +71,7 @@ export default function SalesPage() {
     },
     {
       accessorKey: 'grandTotal',
-      header: 'Total',
+      header: () => <SortableHeader label="Total" sortKey="grandTotal" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} />,
       size: 130,
       cell: ({ row }) => (
         <span className="font-semibold">{formatINR(row.original.grandTotal)}</span>
@@ -70,7 +79,7 @@ export default function SalesPage() {
     },
     {
       accessorKey: 'balanceDue',
-      header: 'Balance Due',
+      header: () => <SortableHeader label="Balance Due" sortKey="balanceDue" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} />,
       size: 120,
       cell: ({ row }) => (
         <span className={row.original.balanceDue > 0 ? 'text-[var(--color-danger)] font-medium' : 'text-[var(--color-muted)]'}>
@@ -86,7 +95,7 @@ export default function SalesPage() {
     },
     {
       accessorKey: 'status',
-      header: 'Status',
+      header: () => <SortableHeader label="Status" sortKey="status" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} />,
       size: 120,
       cell: ({ row }) => (
         <Badge variant={statusVariant[row.original.status] ?? 'default'}>
@@ -96,7 +105,7 @@ export default function SalesPage() {
     },
     {
       accessorKey: 'createdAt',
-      header: 'Date',
+      header: () => <SortableHeader label="Date" sortKey="createdAt" currentKey={sortKey} currentDir={sortDir} onSort={handleSort} />,
       size: 160,
       cell: ({ row }) => (
         <span className="text-xs text-[var(--color-muted)]">{formatDateTime(row.original.createdAt)}</span>

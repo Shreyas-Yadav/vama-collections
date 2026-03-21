@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { formatINR } from '@/lib/format'
 import { MoreHorizontal, Eye, Pencil, Trash2 } from 'lucide-react'
+import { SortableHeader } from '@/components/ui/sortable-header'
 
 const stockBadge: Record<Product['stockStatus'], { label: string; variant: 'success' | 'warning' | 'danger' }> = {
   IN_STOCK: { label: 'In Stock', variant: 'success' },
@@ -56,10 +57,13 @@ interface MakeColumnsOptions {
   onView: (p: Product) => void
   onEdit: (p: Product) => void
   onDelete: (p: Product) => void
+  sortKey: string
+  sortDir: 'asc' | 'desc'
+  onSort: (key: string) => void
 }
 
 export function makeProductColumns({
-  onView, onEdit, onDelete,
+  onView, onEdit, onDelete, sortKey, sortDir, onSort,
 }: MakeColumnsOptions): ColumnDef<Product, unknown>[] {
   return [
     {
@@ -72,7 +76,7 @@ export function makeProductColumns({
     },
     {
       accessorKey: 'name',
-      header: 'Product Name',
+      header: () => <SortableHeader label="Product Name" sortKey="name" currentKey={sortKey} currentDir={sortDir} onSort={onSort} />,
       cell: ({ row }) => (
         <div>
           <p className="font-medium">{row.original.name}</p>
@@ -84,7 +88,7 @@ export function makeProductColumns({
     },
     {
       accessorKey: 'sellingPrice',
-      header: 'Selling Price',
+      header: () => <SortableHeader label="Selling Price" sortKey="sellingPrice" currentKey={sortKey} currentDir={sortDir} onSort={onSort} />,
       size: 120,
       cell: ({ row }) => (
         <span className="font-medium">{formatINR(row.original.sellingPrice)}</span>
@@ -92,7 +96,7 @@ export function makeProductColumns({
     },
     {
       accessorKey: 'costPrice',
-      header: 'Cost Price',
+      header: () => <SortableHeader label="Cost Price" sortKey="costPrice" currentKey={sortKey} currentDir={sortDir} onSort={onSort} />,
       size: 120,
       cell: ({ row }) => (
         <span className="text-[var(--color-muted)]">{formatINR(row.original.costPrice)}</span>
@@ -100,7 +104,7 @@ export function makeProductColumns({
     },
     {
       accessorKey: 'quantityInStock',
-      header: 'Qty',
+      header: () => <SortableHeader label="Qty" sortKey="quantityInStock" currentKey={sortKey} currentDir={sortDir} onSort={onSort} />,
       size: 80,
       cell: ({ row }) => (
         <span className={row.original.stockStatus === 'OUT_OF_STOCK' ? 'text-[var(--color-danger)]' : ''}>
@@ -110,7 +114,7 @@ export function makeProductColumns({
     },
     {
       accessorKey: 'stockStatus',
-      header: 'Status',
+      header: () => <SortableHeader label="Status" sortKey="stockStatus" currentKey={sortKey} currentDir={sortDir} onSort={onSort} />,
       size: 120,
       cell: ({ row }) => {
         const s = stockBadge[row.original.stockStatus]
@@ -119,7 +123,7 @@ export function makeProductColumns({
     },
     {
       accessorKey: 'gstSlab',
-      header: 'GST',
+      header: () => <SortableHeader label="GST" sortKey="gstSlab" currentKey={sortKey} currentDir={sortDir} onSort={onSort} />,
       size: 70,
       cell: ({ row }) => (
         <span className="text-[var(--color-muted-fg)]">{row.original.gstSlab}%</span>

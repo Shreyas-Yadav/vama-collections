@@ -10,6 +10,8 @@ interface BillListParams {
   status?: string
   from?: string
   to?: string
+  sortKey?: string
+  sortDir?: 'asc' | 'desc'
 }
 
 export const salesService = {

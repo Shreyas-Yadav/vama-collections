@@ -32,12 +32,22 @@ export default function InventoryPage() {
   const [stockStatus, setStockStatus] = useState('')
   const [productType, setProductType] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null)
+  const [sortKey, setSortKey] = useState('name')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+
+  const handleSort = (key: string) => {
+    if (key === sortKey) { setSortDir((d) => d === 'asc' ? 'desc' : 'asc') }
+    else { setSortKey(key); setSortDir('asc') }
+    setPage(1)
+  }
 
   const { data, isLoading } = useProducts({
     page, pageSize, search,
     categoryId: categoryId || undefined,
     stockStatus: stockStatus || undefined,
     productType: productType || undefined,
+    sortKey,
+    sortDir,
   })
 
   const { data: categories } = useAllCategories()
@@ -47,6 +57,9 @@ export default function InventoryPage() {
     onView: (p) => router.push(`/inventory/${p.id}`),
     onEdit: (p) => router.push(`/inventory/${p.id}/edit`),
     onDelete: setDeleteTarget,
+    sortKey,
+    sortDir,
+    onSort: handleSort,
   })
 
   const handleDelete = async () => {

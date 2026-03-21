@@ -3,6 +3,7 @@ import type { PaginatedResponse } from '@/types/api'
 import { generateBillNumber } from '@/lib/format'
 import { calculateLineGST } from '@/lib/format'
 import { deductStock } from './products.mock'
+import { sortItems } from './sort'
 
 const now = new Date().toISOString()
 
@@ -101,6 +102,8 @@ export const mockSales = {
     status?: string
     from?: string
     to?: string
+    sortKey?: string
+    sortDir?: 'asc' | 'desc'
   }): Promise<PaginatedResponse<Bill>> {
     return new Promise((resolve) => {
       setTimeout(() => {
@@ -114,8 +117,7 @@ export const mockSales = {
           )
         }
         if (params.status) filtered = filtered.filter((b) => b.status === params.status)
-        // sort by newest first
-        filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        filtered = sortItems(filtered as unknown as Record<string, unknown>[], params.sortKey ?? 'createdAt', params.sortDir ?? 'desc') as unknown as Bill[]
         resolve(paginate(filtered, params.page, params.pageSize))
       }, 200)
     })

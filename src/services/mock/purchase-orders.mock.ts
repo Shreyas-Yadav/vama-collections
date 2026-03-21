@@ -2,6 +2,7 @@ import type { PurchaseOrder, CreatePODto } from '@/types'
 import type { PaginatedResponse } from '@/types/api'
 import { generatePONumber } from '@/lib/format'
 import { addStock } from './products.mock'
+import { sortItems } from './sort'
 
 const now = new Date().toISOString()
 
@@ -51,6 +52,8 @@ export const mockPurchaseOrders = {
     pageSize: number
     search?: string
     status?: string
+    sortKey?: string
+    sortDir?: 'asc' | 'desc'
   }): Promise<PaginatedResponse<PurchaseOrder>> {
     return new Promise((resolve) => {
       setTimeout(() => {
@@ -64,7 +67,7 @@ export const mockPurchaseOrders = {
           )
         }
         if (params.status) filtered = filtered.filter((po) => po.status === params.status)
-        filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        filtered = sortItems(filtered as unknown as Record<string, unknown>[], params.sortKey ?? 'createdAt', params.sortDir ?? 'desc') as unknown as PurchaseOrder[]
         resolve(paginate(filtered, params.page, params.pageSize))
       }, 200)
     })

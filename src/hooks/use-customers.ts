@@ -13,7 +13,7 @@ export const customerKeys = {
   search: (q: string) => [...customerKeys.all, 'search', q] as const,
 }
 
-export function useCustomers(params: { page: number; pageSize: number; search?: string }) {
+export function useCustomers(params: { page: number; pageSize: number; search?: string; sortKey?: string; sortDir?: 'asc' | 'desc' }) {
   return useQuery({
     queryKey: customerKeys.list(params),
     queryFn: () => customersService.list(params),

@@ -13,7 +13,7 @@ export const vendorKeys = {
   detail: (id: string) => [...vendorKeys.details(), id] as const,
 }
 
-export function useVendors(params: { page: number; pageSize: number; search?: string }) {
+export function useVendors(params: { page: number; pageSize: number; search?: string; sortKey?: string; sortDir?: 'asc' | 'desc' }) {
   return useQuery({
     queryKey: vendorKeys.list(params),
     queryFn: () => vendorsService.list(params),

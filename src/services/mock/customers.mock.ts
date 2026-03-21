@@ -1,5 +1,6 @@
 import type { Customer, CreateCustomerDto, UpdateCustomerDto } from '@/types'
 import type { PaginatedResponse } from '@/types/api'
+import { sortItems } from './sort'
 
 const now = new Date().toISOString()
 
@@ -46,7 +47,7 @@ function paginate<T>(items: T[], page: number, pageSize: number): PaginatedRespo
 }
 
 export const mockCustomers = {
-  list(params: { page: number; pageSize: number; search?: string }): Promise<PaginatedResponse<Customer>> {
+  list(params: { page: number; pageSize: number; search?: string; sortKey?: string; sortDir?: 'asc' | 'desc' }): Promise<PaginatedResponse<Customer>> {
     return new Promise((resolve) => {
       setTimeout(() => {
         let filtered = [...customers]
@@ -56,6 +57,7 @@ export const mockCustomers = {
             (c) => c.name.toLowerCase().includes(s) || c.phone.includes(s),
           )
         }
+        filtered = sortItems(filtered as unknown as Record<string, unknown>[], params.sortKey ?? 'name', params.sortDir ?? 'asc') as unknown as Customer[]
         resolve(paginate(filtered, params.page, params.pageSize))
       }, 200)
     })

@@ -3,39 +3,7 @@
 import { usePathname } from 'next/navigation'
 import { Bell, Search } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-
-const ROUTE_LABELS: Record<string, string> = {
-  '/dashboard': 'Dashboard',
-  '/inventory': 'Products',
-  '/inventory/new': 'Add Product',
-  '/categories': 'Categories',
-  '/vendors': 'Vendors',
-  '/vendors/new': 'Add Vendor',
-  '/purchase-orders': 'Purchase Orders',
-  '/purchase-orders/new': 'New Purchase Order',
-  '/sales': 'Bills & Invoices',
-  '/sales/new': 'New Bill',
-  '/customers': 'Customers',
-  '/reports': 'Reports',
-  '/reports/sales': 'Sales Report',
-  '/reports/stock': 'Stock Report',
-  '/reports/gst': 'GST Report',
-  '/settings': 'Settings',
-  '/settings/tax': 'Tax & GST Settings',
-  '/settings/users': 'Users',
-}
-
-function getPageTitle(pathname: string): string {
-  if (ROUTE_LABELS[pathname]) return ROUTE_LABELS[pathname]
-  // Handle dynamic segments
-  if (pathname.includes('/inventory/') && pathname.endsWith('/edit')) return 'Edit Product'
-  if (pathname.includes('/inventory/')) return 'Product Details'
-  if (pathname.includes('/vendors/')) return 'Vendor Details'
-  if (pathname.includes('/purchase-orders/')) return 'Purchase Order Details'
-  if (pathname.includes('/sales/')) return 'Bill Details'
-  if (pathname.includes('/customers/')) return 'Customer Details'
-  return 'Vama'
-}
+import { getPageTitle } from '@/lib/navigation'
 
 export function Topbar() {
   const pathname = usePathname()

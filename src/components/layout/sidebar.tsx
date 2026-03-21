@@ -2,71 +2,10 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import {
-  LayoutDashboard, Package, Tag, Truck, ShoppingCart,
-  Users, BarChart2, Settings, ChevronLeft, ChevronRight,
-  Receipt, ClipboardList, FileText, ChevronDown,
-} from 'lucide-react'
+import { ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
-
-interface NavItem {
-  label: string
-  href?: string
-  icon: React.ElementType
-  children?: NavItem[]
-}
-
-const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
-  {
-    title: 'Overview',
-    items: [
-      { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    ],
-  },
-  {
-    title: 'Inventory',
-    items: [
-      { label: 'Products', href: '/inventory', icon: Package },
-      { label: 'Categories', href: '/categories', icon: Tag },
-    ],
-  },
-  {
-    title: 'Procurement',
-    items: [
-      { label: 'Vendors', href: '/vendors', icon: Truck },
-      { label: 'Purchase Orders', href: '/purchase-orders', icon: ClipboardList },
-    ],
-  },
-  {
-    title: 'Sales',
-    items: [
-      { label: 'New Bill', href: '/sales/new', icon: Receipt },
-      { label: 'Bills / Invoices', href: '/sales', icon: ShoppingCart },
-      { label: 'Customers', href: '/customers', icon: Users },
-    ],
-  },
-  {
-    title: 'Reports',
-    items: [
-      {
-        label: 'Reports',
-        icon: BarChart2,
-        children: [
-          { label: 'Sales Report', href: '/reports/sales', icon: BarChart2 },
-          { label: 'Stock Report', href: '/reports/stock', icon: Package },
-          { label: 'GST Report', href: '/reports/gst', icon: FileText },
-        ],
-      },
-    ],
-  },
-  {
-    title: 'System',
-    items: [
-      { label: 'Settings', href: '/settings', icon: Settings },
-    ],
-  },
-]
+import { NAV_GROUPS } from '@/lib/navigation'
 
 interface SidebarProps {
   collapsed: boolean

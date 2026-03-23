@@ -1,0 +1,36 @@
+spring:
+  application:
+    name: vama-backend
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/vama}
+    username: ${DB_USERNAME:vama}
+    password: ${DB_PASSWORD:vama}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+        format_sql: true
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  jackson:
+    time-zone: UTC
+
+server:
+  port: ${PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html

@@ -83,7 +83,16 @@ export default function BillDetailPage({ params }: { params: Promise<{ id: strin
   }
 
   if (isLoading) return <div className="flex justify-center py-20"><Spinner size="lg" /></div>
-  if (!bill) return <p className="text-center py-20 text-[var(--color-muted)]">Bill not found</p>
+  if (!bill) {
+    return (
+      <div className="flex flex-col items-center gap-4 py-20 text-center">
+        <p className="text-[var(--color-muted)]">Bill not found</p>
+        <Button variant="outline" onClick={() => router.push('/sales')}>
+          <ArrowLeft className="h-4 w-4" /> Back to Bills
+        </Button>
+      </div>
+    )
+  }
 
   const nextStatuses = STATUS_TRANSITIONS[bill.status]
   const isCancelling = pendingStatus === 'CANCELLED'
@@ -181,34 +190,34 @@ export default function BillDetailPage({ params }: { params: Promise<{ id: strin
             <CardHeader><CardTitle>Items</CardTitle></CardHeader>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="min-w-[780px] w-full text-sm">
                   <thead className="bg-[var(--color-surface-raised)] border-b border-[var(--color-border)]">
                     <tr>
                       {['Product', 'HSN', 'Qty', 'Rate', 'Disc', 'Taxable', 'GST', 'Total'].map((h) => (
-                        <th key={h} className="px-4 py-2 text-left font-semibold text-xs text-[var(--color-muted-fg)]">{h}</th>
+                        <th key={h} className="px-3 py-2 text-left font-semibold text-xs text-[var(--color-muted-fg)] whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--color-border)]">
                     {bill.lineItems.map((li) => (
                       <tr key={li.id}>
-                        <td className="px-4 py-3">
+                        <td className="px-3 py-3 min-w-[220px]">
                           <p className="font-medium">{li.productName}</p>
                           <p className="text-xs text-[var(--color-muted)]">{li.sku}</p>
                         </td>
-                        <td className="px-4 py-3 font-mono text-xs">{li.hsnCode}</td>
-                        <td className="px-4 py-3">{li.quantity}</td>
-                        <td className="px-4 py-3">{formatINR(li.unitPrice)}</td>
-                        <td className="px-4 py-3">{li.discountPercent > 0 ? `${li.discountPercent}%` : '—'}</td>
-                        <td className="px-4 py-3">{formatINR(li.taxableAmount)}</td>
-                        <td className="px-4 py-3 text-xs">
+                        <td className="px-3 py-3 font-mono text-xs whitespace-nowrap">{li.hsnCode}</td>
+                        <td className="px-3 py-3 whitespace-nowrap">{li.quantity}</td>
+                        <td className="px-3 py-3 whitespace-nowrap">{formatINR(li.unitPrice)}</td>
+                        <td className="px-3 py-3 whitespace-nowrap">{li.discountPercent > 0 ? `${li.discountPercent}%` : '—'}</td>
+                        <td className="px-3 py-3 whitespace-nowrap">{formatINR(li.taxableAmount)}</td>
+                        <td className="px-3 py-3 text-xs whitespace-nowrap">
                           {!bill.isGstEnabled
                             ? <span className="text-[var(--color-muted)]">—</span>
                             : bill.isInterState
                               ? `IGST ${li.gstSlab}%`
                               : `CGST+SGST ${li.gstSlab}%`}
                         </td>
-                        <td className="px-4 py-3 font-semibold">{formatINR(li.lineTotal)}</td>
+                        <td className="px-3 py-3 font-semibold whitespace-nowrap">{formatINR(li.lineTotal)}</td>
                       </tr>
                     ))}
                   </tbody>

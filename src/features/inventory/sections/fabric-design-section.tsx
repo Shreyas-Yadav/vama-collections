@@ -41,12 +41,13 @@ export function FabricDesignSection({ register, watch, setValue, errors }: Fabri
         </div>
         <div>
           <Label required>Color</Label>
-          <Input id="color" {...register('color')} error={!!errors.color} className="mt-1" placeholder="e.g. Deep Crimson" />
+          <Input id="color" {...register('color')} maxLength={50} error={!!errors.color} className="mt-1" placeholder="e.g. Deep Crimson" />
           {errors.color && <p className="mt-1 text-xs text-[var(--color-danger)]">{errors.color.message}</p>}
         </div>
         <div>
           <Label required>Pattern</Label>
-          <Input id="pattern" {...register('pattern')} error={!!errors.pattern} className="mt-1" placeholder="e.g. Floral Zari" />
+          <Input id="pattern" {...register('pattern')} maxLength={50} error={!!errors.pattern} className="mt-1" placeholder="e.g. Floral Zari" />
+          {errors.pattern && <p className="mt-1 text-xs text-[var(--color-danger)]">{errors.pattern.message}</p>}
         </div>
         {(productType === 'Saree' || productType === 'Fabric') && (
           <div>

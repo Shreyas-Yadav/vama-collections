@@ -16,13 +16,13 @@ interface ProductFormProps {
 
 export function ProductForm({ product }: ProductFormProps) {
   const router = useRouter()
-  const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting }, onSubmit, categories, vendors } = useProductForm(product)
+  const { control, register, handleSubmit, watch, setValue, formState: { errors, isSubmitting }, onSubmit, categories, vendors } = useProductForm(product)
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 max-w-3xl">
-      <BasicInfoSection register={register} watch={watch} setValue={setValue} errors={errors} categories={categories} />
+      <BasicInfoSection control={control} register={register} watch={watch} setValue={setValue} errors={errors} categories={categories} />
       <FabricDesignSection register={register} watch={watch} setValue={setValue} errors={errors} />
-      <PricingGstSection register={register} watch={watch} setValue={setValue} errors={errors} />
+      <PricingGstSection control={control} register={register} watch={watch} setValue={setValue} errors={errors} />
       <StockVendorSection register={register} watch={watch} setValue={setValue} errors={errors} vendors={vendors} />
 
       <Separator />

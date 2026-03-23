@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { PageHeader } from '@/components/layout/page-header'
 import { Button } from '@/components/ui/button'
@@ -8,10 +9,12 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
+import { Spinner } from '@/components/ui/spinner'
+import { useStoreSettings, useSaveStoreSettings } from '@/hooks/use-settings'
 import { useToast } from '@/providers/toast-provider'
 import { INDIAN_STATES } from '@/lib/constants'
 
-interface StoreSettings {
+interface StoreSettingsForm {
   storeName: string
   ownerName: string
   phone: string
@@ -29,15 +32,45 @@ interface StoreSettings {
 
 export default function SettingsPage() {
   const { toast } = useToast()
-  const { register, handleSubmit, watch, setValue } = useForm<StoreSettings>({
+  const { data, isLoading } = useStoreSettings()
+  const saveSettings = useSaveStoreSettings()
+  const { register, handleSubmit, watch, setValue, reset } = useForm<StoreSettingsForm>({
     defaultValues: {
       storeName: 'Vama Saree Centre',
       state: 'Maharashtra',
     },
   })
 
-  const onSubmit = () => {
-    toast({ title: 'Settings saved', variant: 'success' })
+  useEffect(() => {
+    if (!data) return
+    reset({
+      storeName: data.storeName ?? 'Vama Saree Centre',
+      ownerName: data.ownerName ?? '',
+      phone: data.phone ?? '',
+      email: data.email ?? '',
+      addressLine1: data.addressLine1 ?? '',
+      city: data.city ?? '',
+      state: data.state ?? 'Maharashtra',
+      pincode: data.pincode ?? '',
+      gstin: data.gstin ?? '',
+      bankName: data.bankName ?? '',
+      accountNumber: data.accountNumber ?? '',
+      ifscCode: data.ifscCode ?? '',
+      upiId: data.upiId ?? '',
+    })
+  }, [data, reset])
+
+  const onSubmit = async (values: StoreSettingsForm) => {
+    try {
+      await saveSettings.mutateAsync(values)
+      toast({ title: 'Settings saved', variant: 'success' })
+    } catch {
+      toast({ title: 'Failed to save settings', variant: 'error' })
+    }
+  }
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center py-20"><Spinner size="lg" /></div>
   }
 
   return (
@@ -122,7 +155,7 @@ export default function SettingsPage() {
         </Card>
 
         <Separator />
-        <Button type="submit">Save Settings</Button>
+        <Button type="submit" loading={saveSettings.isPending}>Save Settings</Button>
       </form>
     </div>
   )

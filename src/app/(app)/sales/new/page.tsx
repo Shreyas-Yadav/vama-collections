@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, type KeyboardEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { Plus, Trash2 } from 'lucide-react'
 import { PageHeader } from '@/components/layout/page-header'
@@ -23,6 +23,8 @@ import { PAYMENT_METHODS, PAYMENT_METHOD_LABELS } from '@/lib/constants'
 import type { Product, Customer } from '@/types'
 import type { GSTSlab } from '@/lib/format'
 
+const PHONE_REGEX = /^\d{10}$/
+
 interface LineItem {
   productId: string
   productName: string
@@ -32,6 +34,16 @@ interface LineItem {
   discountPercent: number
   gstSlab: GSTSlab
   hsnCode: string
+}
+
+function clampDiscount(discountPercent: number) {
+  return Math.min(100, Math.max(0, discountPercent))
+}
+
+function preventNegativeKey(event: KeyboardEvent<HTMLInputElement>) {
+  if (event.key === '-' || event.key.toLowerCase() === 'e') {
+    event.preventDefault()
+  }
 }
 
 export default function NewBillPage() {
@@ -52,11 +64,13 @@ export default function NewBillPage() {
   const [showProductSearch, setShowProductSearch] = useState(false)
   const [showCustomerSearch, setShowCustomerSearch] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [attemptedSubmit, setAttemptedSubmit] = useState(false)
 
   const [showNewCustomerDialog, setShowNewCustomerDialog] = useState(false)
   const [newCustomerName, setNewCustomerName] = useState('')
   const [newCustomerPhone, setNewCustomerPhone] = useState('')
   const [newCustomerEmail, setNewCustomerEmail] = useState('')
+  const [newCustomerErrors, setNewCustomerErrors] = useState<{ name?: string; phone?: string }>({})
   const createCustomer = useCreateCustomer()
 
   const { data: productResults } = useProductSearch(productSearch)
@@ -64,14 +78,26 @@ export default function NewBillPage() {
 
   const totals = calculateBill(
     lineItems.map((li) => ({
-      quantity: li.quantity,
+      quantity: Math.max(1, li.quantity),
       unitPrice: li.unitPrice,
-      discountPercent: li.discountPercent,
+      discountPercent: clampDiscount(li.discountPercent),
       gstSlab: li.gstSlab,
     })),
     isInterState,
     isGstEnabled,
   )
+  const amountPaid = Math.round((parseFloat(amountPaidRupees) || 0) * 100)
+  const hasOverpayment = amountPaid > totals.grandTotal
+  const lineItemErrors = lineItems.map((li) => {
+    if (li.quantity < 1) return 'Quantity must be at least 1'
+    if (li.discountPercent < 0) return 'Discount cannot be below 0%'
+    if (li.discountPercent > 100) return 'Discount cannot exceed 100%'
+    return null
+  })
+  const hasLineItemErrors = lineItemErrors.some(Boolean)
+  const customerNameError = attemptedSubmit && !customerName.trim() ? 'Customer name is required' : null
+  const itemsError = attemptedSubmit && lineItems.length === 0 ? 'Please add at least one item to create a bill' : null
+  const amountPaidError = attemptedSubmit && hasOverpayment ? 'Amount paid exceeds the bill total' : null
 
   const addProduct = (product: Product) => {
     setLineItems((prev) => [
@@ -107,8 +133,15 @@ export default function NewBillPage() {
   }
 
   const handleAddNewCustomer = async () => {
-    if (!newCustomerName) {
-      toast({ title: 'Enter customer name', variant: 'warning' })
+    const errors: { name?: string; phone?: string } = {}
+    if (!newCustomerName.trim()) {
+      errors.name = 'Customer name is required'
+    }
+    if (!PHONE_REGEX.test(newCustomerPhone)) {
+      errors.phone = 'Phone number must be exactly 10 digits'
+    }
+    if (errors.name || errors.phone) {
+      setNewCustomerErrors(errors)
       return
     }
     try {
@@ -123,6 +156,7 @@ export default function NewBillPage() {
       setCustomerSearch('')
       setShowCustomerSearch(false)
       setShowNewCustomerDialog(false)
+      setNewCustomerErrors({})
       toast({ title: 'Customer added', variant: 'success' })
     } catch {
       toast({ title: 'Failed to add customer', variant: 'error' })
@@ -132,6 +166,14 @@ export default function NewBillPage() {
   const updateLine = (index: number, field: keyof LineItem, value: string | number) => {
     setLineItems((prev) => {
       const updated = [...prev]
+      if (field === 'quantity') {
+        updated[index] = { ...updated[index], quantity: Math.max(1, Number(value) || 1) }
+        return updated
+      }
+      if (field === 'discountPercent') {
+        updated[index] = { ...updated[index], discountPercent: Number(value) || 0 }
+        return updated
+      }
       updated[index] = { ...updated[index], [field]: value }
       return updated
     })
@@ -142,16 +184,11 @@ export default function NewBillPage() {
   }
 
   const handleSubmit = async () => {
-    if (lineItems.length === 0) {
-      toast({ title: 'Add at least one item', variant: 'warning' })
-      return
-    }
-    if (!customerName) {
-      toast({ title: 'Enter customer name', variant: 'warning' })
+    setAttemptedSubmit(true)
+    if (lineItems.length === 0 || !customerName.trim() || hasLineItemErrors || hasOverpayment) {
       return
     }
 
-    const amountPaid = Math.round((parseFloat(amountPaidRupees) || 0) * 100)
     const status = amountPaid >= totals.grandTotal ? 'PAID' : amountPaid > 0 ? 'PARTIALLY_PAID' : 'DRAFT'
 
     setSubmitting(true)
@@ -207,6 +244,7 @@ export default function NewBillPage() {
                       if (!e.target.value) setCustomerId(undefined)
                     }}
                     placeholder="Customer name or search..."
+                    error={!!customerNameError}
                   />
                   {showCustomerSearch && customerSearch.length >= 2 && (
                     <div className="absolute top-full left-0 right-0 z-10 mt-1 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-white shadow-lg">
@@ -236,6 +274,7 @@ export default function NewBillPage() {
                     </div>
                   )}
                 </div>
+                {customerNameError && <p className="mt-1 text-xs text-[var(--color-danger)]">{customerNameError}</p>}
               </div>
               <div>
                 <Label>Phone</Label>
@@ -308,9 +347,12 @@ export default function NewBillPage() {
             </CardHeader>
             <CardContent>
               {lineItems.length === 0 ? (
-                <p className="text-sm text-[var(--color-muted)] text-center py-8">
-                  No items added. Click "Add Item" to search and add products.
-                </p>
+                <div className="py-8 text-center">
+                  <p className="text-sm text-[var(--color-muted)]">
+                    No items added. Click &quot;Add Item&quot; to search and add products.
+                  </p>
+                  {itemsError && <p className="mt-2 text-xs text-[var(--color-danger)]">{itemsError}</p>}
+                </div>
               ) : (
                 <div className="space-y-3">
                   {/* Header */}
@@ -323,59 +365,69 @@ export default function NewBillPage() {
                     <div className="col-span-1" />
                   </div>
                   {lineItems.map((li, i) => {
-                    const gross = li.quantity * li.unitPrice
-                    const disc = Math.round((gross * li.discountPercent) / 100)
+                    const safeDiscountPercent = clampDiscount(li.discountPercent)
+                    const gross = Math.max(1, li.quantity) * li.unitPrice
+                    const disc = Math.round((gross * safeDiscountPercent) / 100)
                     const taxable = gross - disc
                     const gst = Math.round((taxable * li.gstSlab) / 100)
                     const lineTotal = taxable + gst
                     return (
-                      <div key={i} className="grid grid-cols-12 gap-2 items-center">
-                        <div className="col-span-4">
-                          <p className="text-sm font-medium truncate">{li.productName}</p>
-                          <p className="text-xs text-[var(--color-muted)]">{li.sku} · GST {li.gstSlab}%</p>
+                      <div key={i} className="space-y-1">
+                        <div className="grid grid-cols-12 gap-2 items-center">
+                          <div className="col-span-4">
+                            <p className="text-sm font-medium truncate">{li.productName}</p>
+                            <p className="text-xs text-[var(--color-muted)]">{li.sku} · GST {li.gstSlab}%</p>
+                          </div>
+                          <div className="col-span-2">
+                            <Input
+                              type="number"
+                              min="1"
+                              value={li.quantity}
+                              onKeyDown={preventNegativeKey}
+                              onChange={(e) => updateLine(i, 'quantity', parseInt(e.target.value) || 1)}
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                          <div className="col-span-2">
+                            <Input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={paiToRupees(li.unitPrice)}
+                              onKeyDown={preventNegativeKey}
+                              onChange={(e) => updateLine(i, 'unitPrice', Math.max(0, Math.round(parseFloat(e.target.value || '0') * 100)))}
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                          <div className="col-span-2">
+                            <Input
+                              type="number"
+                              min="0"
+                              max="100"
+                              value={li.discountPercent}
+                              onKeyDown={preventNegativeKey}
+                              onChange={(e) => updateLine(i, 'discountPercent', parseFloat(e.target.value) || 0)}
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                          <div className="col-span-1 text-right">
+                            <span className="text-sm font-medium">{formatINR(lineTotal)}</span>
+                          </div>
+                          <div className="col-span-1 flex justify-end">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-[var(--color-danger)]"
+                              onClick={() => removeLine(i)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
                         </div>
-                        <div className="col-span-2">
-                          <Input
-                            type="number"
-                            min="1"
-                            value={li.quantity}
-                            onChange={(e) => updateLine(i, 'quantity', parseInt(e.target.value) || 1)}
-                            className="h-8 text-sm"
-                          />
-                        </div>
-                        <div className="col-span-2">
-                          <Input
-                            type="number"
-                            step="0.01"
-                            value={paiToRupees(li.unitPrice)}
-                            onChange={(e) => updateLine(i, 'unitPrice', Math.round(parseFloat(e.target.value || '0') * 100))}
-                            className="h-8 text-sm"
-                          />
-                        </div>
-                        <div className="col-span-2">
-                          <Input
-                            type="number"
-                            min="0"
-                            max="100"
-                            value={li.discountPercent}
-                            onChange={(e) => updateLine(i, 'discountPercent', parseFloat(e.target.value) || 0)}
-                            className="h-8 text-sm"
-                          />
-                        </div>
-                        <div className="col-span-1 text-right">
-                          <span className="text-sm font-medium">{formatINR(lineTotal)}</span>
-                        </div>
-                        <div className="col-span-1 flex justify-end">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-[var(--color-danger)]"
-                            onClick={() => removeLine(i)}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
+                        {lineItemErrors[i] && (
+                          <p className="text-xs text-[var(--color-danger)]">{lineItemErrors[i]}</p>
+                        )}
                       </div>
                     )
                   })}
@@ -461,17 +513,23 @@ export default function NewBillPage() {
                   <Input
                     type="number"
                     step="0.01"
+                    min="0"
                     value={amountPaidRupees}
+                    onKeyDown={preventNegativeKey}
                     onChange={(e) => setAmountPaidRupees(e.target.value)}
                     placeholder={paiToRupees(totals.grandTotal).toFixed(2)}
                     className="mt-1"
+                    error={!!amountPaidError}
                   />
+                  {hasOverpayment && (
+                    <p className="mt-1 text-xs text-[var(--color-danger)]">Amount paid exceeds the bill total</p>
+                  )}
                 </div>
                 {amountPaidRupees && totals.grandTotal > 0 && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-[var(--color-muted)]">Balance Due</span>
-                    <span className={totals.grandTotal - Math.round(parseFloat(amountPaidRupees) * 100) > 0 ? 'text-[var(--color-danger)] font-medium' : 'text-[var(--color-success)]'}>
-                      {formatINR(Math.max(0, totals.grandTotal - Math.round(parseFloat(amountPaidRupees) * 100)))}
+                    <span className="text-[var(--color-muted)]">{hasOverpayment ? 'Overpaid' : 'Balance Due'}</span>
+                    <span className={hasOverpayment ? 'text-[var(--color-warning)] font-medium' : totals.grandTotal - amountPaid > 0 ? 'text-[var(--color-danger)] font-medium' : 'text-[var(--color-success)]'}>
+                      {formatINR(hasOverpayment ? amountPaid - totals.grandTotal : Math.max(0, totals.grandTotal - amountPaid))}
                     </span>
                   </div>
                 )}
@@ -483,7 +541,6 @@ export default function NewBillPage() {
                 className="w-full"
                 onClick={handleSubmit}
                 loading={submitting}
-                disabled={lineItems.length === 0}
               >
                 Create Bill
               </Button>
@@ -508,11 +565,19 @@ export default function NewBillPage() {
           <div className="space-y-4 py-2">
             <div>
               <Label>Name</Label>
-              <Input value={newCustomerName} onChange={(e) => setNewCustomerName(e.target.value)} className="mt-1" autoFocus />
+              <Input value={newCustomerName} onChange={(e) => {
+                setNewCustomerName(e.target.value)
+                setNewCustomerErrors((prev) => ({ ...prev, name: undefined }))
+              }} className="mt-1" error={!!newCustomerErrors.name} autoFocus />
+              {newCustomerErrors.name && <p className="mt-1 text-xs text-[var(--color-danger)]">{newCustomerErrors.name}</p>}
             </div>
             <div>
               <Label>Phone</Label>
-              <Input value={newCustomerPhone} onChange={(e) => setNewCustomerPhone(e.target.value)} placeholder="10-digit mobile" className="mt-1" />
+              <Input value={newCustomerPhone} onChange={(e) => {
+                setNewCustomerPhone(e.target.value.replace(/\D/g, '').slice(0, 10))
+                setNewCustomerErrors((prev) => ({ ...prev, phone: undefined }))
+              }} inputMode="numeric" maxLength={10} placeholder="10-digit mobile" className="mt-1" error={!!newCustomerErrors.phone} />
+              {newCustomerErrors.phone && <p className="mt-1 text-xs text-[var(--color-danger)]">{newCustomerErrors.phone}</p>}
             </div>
             <div>
               <Label>Email <span className="text-[var(--color-muted)]">(optional)</span></Label>
@@ -528,4 +593,3 @@ export default function NewBillPage() {
     </div>
   )
 }
-

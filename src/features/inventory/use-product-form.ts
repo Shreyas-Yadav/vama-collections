@@ -32,7 +32,7 @@ export function useProductForm(product?: Product) {
       : {
           gstSlab: 5,
           quantityInStock: 0,
-          lowStockThreshold: 5,
+          lowStockThreshold: 0,
           isActive: true,
           blouseIncluded: false,
         },

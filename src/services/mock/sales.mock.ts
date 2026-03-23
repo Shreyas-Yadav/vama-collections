@@ -5,9 +5,7 @@ import { calculateLineGST } from '@/lib/format'
 import { deductStock } from './products.mock'
 import { sortItems } from './sort'
 
-const now = new Date().toISOString()
-
-let bills: Bill[] = [
+const bills: Bill[] = [
   {
     id: 'b-1', billNumber: 'VAMA-2026-00001',
     customerId: 'cu-3', customerName: 'Lakshmi Venkataraman', customerPhone: '9444556677',

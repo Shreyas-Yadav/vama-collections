@@ -18,7 +18,7 @@ import { makeProductColumns } from '@/features/inventory/product-table-columns'
 import { useProducts, useDeleteProduct } from '@/hooks/use-products'
 import { useAllCategories } from '@/hooks/use-categories'
 import { useToast } from '@/providers/toast-provider'
-import { PAGE_SIZE_DEFAULT, PRODUCT_TYPES, STOCK_STATUSES } from '@/lib/constants'
+import { PAGE_SIZE_DEFAULT, PRODUCT_TYPES } from '@/lib/constants'
 import type { Product } from '@/types'
 
 export default function InventoryPage() {

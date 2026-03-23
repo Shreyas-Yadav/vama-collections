@@ -40,9 +40,13 @@ export function Topbar() {
           </button>
 
           {/* Notifications */}
-          <button className="relative h-8 w-8 flex items-center justify-center rounded-[var(--radius)] text-[var(--color-muted)] hover:text-[var(--color-foreground)] hover:bg-[var(--color-surface-raised)] transition-colors">
+          <span
+            title="Notifications coming soon"
+            aria-label="Notifications coming soon"
+            className="relative h-8 w-8 flex items-center justify-center rounded-[var(--radius)] text-[var(--color-muted)] cursor-help"
+          >
             <Bell className="h-4 w-4" />
-          </button>
+          </span>
 
           {/* User avatar */}
           <Avatar className="h-8 w-8 cursor-pointer">

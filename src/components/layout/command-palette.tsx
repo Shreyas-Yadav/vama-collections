@@ -21,10 +21,12 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
   const { data: results, isFetching } = useProductSearch(query)
 
   useEffect(() => {
-    if (open) {
+    if (!open) return
+    const t = setTimeout(() => {
       setQuery('')
-      setTimeout(() => inputRef.current?.focus(), 50)
-    }
+      inputRef.current?.focus()
+    }, 0)
+    return () => clearTimeout(t)
   }, [open])
 
   const handleSelect = (id: string) => {

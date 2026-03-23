@@ -32,9 +32,20 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
   const router = useRouter()
   const { data: customer, isLoading } = useCustomer(id)
   const { data: bills } = useCustomerBills(id)
+  const historyCount = bills?.length
+  const totalOrders = historyCount ?? customer?.totalOrders ?? 0
 
   if (isLoading) return <div className="flex justify-center py-20"><Spinner size="lg" /></div>
-  if (!customer) return <p className="text-center py-20 text-[var(--color-muted)]">Customer not found</p>
+  if (!customer) {
+    return (
+      <div className="flex flex-col items-center gap-4 py-20 text-center">
+        <p className="text-[var(--color-muted)]">Customer not found</p>
+        <Button variant="outline" onClick={() => router.push('/customers')}>
+          <ArrowLeft className="h-4 w-4" /> Back to Customers
+        </Button>
+      </div>
+    )
+  }
 
   return (
     <div>
@@ -61,7 +72,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
         <Card>
           <CardHeader><CardTitle>Purchase Summary</CardTitle></CardHeader>
           <CardContent>
-            <DetailRow label="Total Orders" value={String(customer.totalOrders)} />
+            <DetailRow label="Total Orders" value={String(totalOrders)} />
             <DetailRow label="Total Purchases" value={formatINR(customer.totalPurchaseValue)} />
             <DetailRow label="Loyalty Points" value={String(customer.loyaltyPoints)} />
             <DetailRow label="Last Purchase" value={customer.lastPurchaseDate ? formatDate(customer.lastPurchaseDate) : undefined} />
@@ -71,7 +82,10 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
       </div>
 
       <Card className="mt-6">
-        <CardHeader><CardTitle>Purchase History</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle>Purchase History</CardTitle>
+          <p className="text-sm text-[var(--color-muted)]">Showing all {totalOrders} orders</p>
+        </CardHeader>
         <CardContent className="p-0">
           {!bills || bills.length === 0 ? (
             <p className="text-sm text-[var(--color-muted)] text-center py-8">No bills found for this customer.</p>
@@ -94,7 +108,7 @@ export default function CustomerDetailPage({ params }: { params: Promise<{ id: s
                     >
                       <td className="px-4 py-3 font-mono text-xs font-medium">{bill.billNumber}</td>
                       <td className="px-4 py-3">{formatDate(bill.createdAt)}</td>
-                      <td className="px-4 py-3">{bill.lineItems.length}</td>
+                      <td className="px-4 py-3">{bill.itemCount}</td>
                       <td className="px-4 py-3 font-semibold">{formatINR(bill.grandTotal)}</td>
                       <td className="px-4 py-3">
                         <Badge variant={billStatusVariant[bill.status] ?? 'default'}>

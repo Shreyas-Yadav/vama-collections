@@ -4,9 +4,7 @@ import { generatePONumber } from '@/lib/format'
 import { addStock } from './products.mock'
 import { sortItems } from './sort'
 
-const now = new Date().toISOString()
-
-let purchaseOrders: PurchaseOrder[] = [
+const purchaseOrders: PurchaseOrder[] = [
   {
     id: 'po-1', poNumber: 'PO-2026-0001', vendorId: 'v-1', vendorName: 'Shree Kanjivaram Silks',
     status: 'RECEIVED', orderDate: '2026-02-15', expectedDeliveryDate: '2026-03-01', receivedDate: '2026-02-28',

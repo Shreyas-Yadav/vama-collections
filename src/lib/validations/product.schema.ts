@@ -1,18 +1,23 @@
 import { z } from 'zod'
 
+const requiredSelect = (message: string) =>
+  z.string({
+    error: (issue) => issue.input === undefined ? message : 'Invalid input',
+  }).min(1, message)
+
 export const productSchema = z.object({
-  name: z.string().min(2, 'Name is required'),
+  name: z.string().min(2, 'Name is required').max(100, 'Product name cannot exceed 100 characters'),
   sku: z.string().min(1, 'SKU is required'),
-  productType: z.string().min(1, 'Product type is required'),
-  categoryId: z.string().min(1, 'Category is required'),
-  fabricType: z.string().min(1, 'Fabric type is required'),
-  color: z.string().min(1, 'Color is required'),
-  pattern: z.string().min(1, 'Pattern is required'),
-  designCode: z.string().optional(),
-  vendorId: z.string().min(1, 'Vendor is required'),
-  costPriceRupees: z.number().positive('Enter a valid cost price'),
-  sellingPriceRupees: z.number().positive('Enter a valid selling price'),
-  mrpRupees: z.number().optional(),
+  productType: requiredSelect('Product type is required'),
+  categoryId: requiredSelect('Category is required'),
+  fabricType: requiredSelect('Fabric type is required'),
+  color: z.string().min(1, 'Color is required').max(50, 'Color cannot exceed 50 characters'),
+  pattern: z.string().min(1, 'Pattern is required').max(50, 'Pattern cannot exceed 50 characters'),
+  designCode: z.string().max(50, 'Design code cannot exceed 50 characters').optional(),
+  vendorId: requiredSelect('Vendor is required'),
+  costPriceRupees: z.number().min(0, 'Price must be a positive number'),
+  sellingPriceRupees: z.number().min(0, 'Price must be a positive number'),
+  mrpRupees: z.number().min(0, 'Price must be a positive number').optional(),
   gstSlab: z.number(),
   hsnCode: z.string().min(1, 'HSN code is required'),
   quantityInStock: z.number().int().min(0),

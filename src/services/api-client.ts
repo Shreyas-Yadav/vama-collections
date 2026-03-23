@@ -1,8 +1,36 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL
+const rawApiUrl = process.env.NEXT_PUBLIC_API_URL?.trim()
+const normalizedApiUrl = rawApiUrl && rawApiUrl !== 'undefined' && rawApiUrl !== 'null'
+  ? rawApiUrl
+  : undefined
 
-export const USE_MOCK = !API_URL
+const API_URL = normalizedApiUrl ?? 'http://localhost:8080'
+
+export const USE_MOCK = !normalizedApiUrl
 
 type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
+
+interface WrappedResponse<T> {
+  data: T
+  message?: string
+  success: boolean
+}
+
+function isWrappedResponse<T>(value: unknown): value is WrappedResponse<T> {
+  return typeof value === 'object'
+    && value !== null
+    && 'success' in value
+    && 'data' in value
+}
+
+function normalizeParams(params?: Record<string, unknown>): Record<string, unknown> | undefined {
+  if (!params) return undefined
+  const next = { ...params }
+  if ('sortKey' in next && !('sortBy' in next)) {
+    next.sortBy = next.sortKey === 'stockStatus' ? 'quantityInStock' : next.sortKey
+  }
+  delete next.sortKey
+  return next
+}
 
 async function request<T>(method: HttpMethod, path: string, data?: unknown): Promise<T> {
   const url = `${API_URL}${path}`
@@ -19,7 +47,8 @@ async function request<T>(method: HttpMethod, path: string, data?: unknown): Pro
   }
 
   if (res.status === 204) return undefined as T
-  return res.json()
+  const json = await res.json()
+  return (isWrappedResponse<T>(json) ? json.data : json) as T
 }
 
 function buildQuery(params?: Record<string, unknown>): string {
@@ -36,7 +65,7 @@ function buildQuery(params?: Record<string, unknown>): string {
 
 export const apiClient = {
   get<T>(path: string, params?: Record<string, unknown>): Promise<T> {
-    return request<T>('GET', `${path}${buildQuery(params)}`)
+    return request<T>('GET', `${path}${buildQuery(normalizeParams(params))}`)
   },
   post<T>(path: string, data?: unknown): Promise<T> {
     return request<T>('POST', path, data)

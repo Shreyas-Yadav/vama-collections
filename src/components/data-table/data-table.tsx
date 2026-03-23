@@ -5,7 +5,6 @@ import {
   getCoreRowModel,
   useReactTable,
   type ColumnDef,
-  type Table as TTable,
 } from '@tanstack/react-table'
 import { cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/skeleton'

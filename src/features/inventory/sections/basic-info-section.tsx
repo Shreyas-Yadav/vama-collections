@@ -1,6 +1,6 @@
 'use client'
 
-import type { UseFormRegister, UseFormWatch, UseFormSetValue, FieldErrors } from 'react-hook-form'
+import { useWatch, type Control, type UseFormRegister, type UseFormWatch, type UseFormSetValue, type FieldErrors } from 'react-hook-form'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -10,6 +10,7 @@ import type { ProductFormValues } from '@/lib/validations/product.schema'
 import type { Category } from '@/types'
 
 interface BasicInfoSectionProps {
+  control: Control<ProductFormValues>
   register: UseFormRegister<ProductFormValues>
   watch: UseFormWatch<ProductFormValues>
   setValue: UseFormSetValue<ProductFormValues>
@@ -17,7 +18,9 @@ interface BasicInfoSectionProps {
   categories?: Category[]
 }
 
-export function BasicInfoSection({ register, watch, setValue, errors, categories }: BasicInfoSectionProps) {
+export function BasicInfoSection({ control, register, watch, setValue, errors, categories }: BasicInfoSectionProps) {
+  const nameValue = useWatch({ control, name: 'name' }) ?? ''
+
   return (
     <Card>
       <CardHeader>
@@ -26,8 +29,11 @@ export function BasicInfoSection({ register, watch, setValue, errors, categories
       <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="sm:col-span-2">
           <Label htmlFor="name" required>Product Name</Label>
-          <Input id="name" {...register('name')} error={!!errors.name} className="mt-1" />
+          <Input id="name" {...register('name')} maxLength={100} error={!!errors.name} className="mt-1" />
           {errors.name && <p className="mt-1 text-xs text-[var(--color-danger)]">{errors.name.message}</p>}
+          <p className={`mt-1 text-right text-xs ${nameValue.length >= 90 ? 'text-amber-500' : 'text-[var(--color-muted)]'}`}>
+            {nameValue.length} / 100 characters
+          </p>
         </div>
         <div>
           <Label htmlFor="sku" required>SKU</Label>
@@ -36,7 +42,7 @@ export function BasicInfoSection({ register, watch, setValue, errors, categories
         </div>
         <div>
           <Label htmlFor="designCode">Design Code</Label>
-          <Input id="designCode" {...register('designCode')} className="mt-1" />
+          <Input id="designCode" {...register('designCode')} maxLength={50} className="mt-1" />
         </div>
         <div>
           <Label required>Product Type</Label>

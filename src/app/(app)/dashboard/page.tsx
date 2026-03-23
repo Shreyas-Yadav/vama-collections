@@ -11,7 +11,7 @@ import { useProducts } from '@/hooks/use-products'
 import { useSales } from '@/hooks/use-sales'
 import { useCustomers } from '@/hooks/use-customers'
 import { formatINR, formatINRCompact, formatDateTime } from '@/lib/format'
-import { BILL_STATUS_LABELS, PAGE_SIZE_DEFAULT } from '@/lib/constants'
+import { BILL_STATUS_LABELS } from '@/lib/constants'
 import type { Bill } from '@/types'
 
 interface MetricCardProps {

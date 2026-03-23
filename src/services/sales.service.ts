@@ -14,6 +14,16 @@ interface BillListParams {
   sortDir?: 'asc' | 'desc'
 }
 
+export interface CustomerBillHistoryItem {
+  id: string
+  billNumber: string
+  customerName: string
+  status: Bill['status']
+  grandTotal: number
+  createdAt: string
+  itemCount: number
+}
+
 export const salesService = {
   list(params: BillListParams): Promise<PaginatedResponse<Bill>> {
     if (USE_MOCK) return mockSales.list(params)
@@ -40,9 +50,19 @@ export const salesService = {
     return apiClient.patch(`/api/v1/bills/${id}/payment`, dto)
   },
 
-  listByCustomer(customerId: string): Promise<Bill[]> {
-    if (USE_MOCK) return mockSales.listByCustomer(customerId)
-    return apiClient.get('/api/v1/bills', { customerId })
+  listByCustomer(customerId: string): Promise<CustomerBillHistoryItem[]> {
+    if (USE_MOCK) {
+      return mockSales.listByCustomer(customerId).then((bills) => bills.map((bill) => ({
+        id: bill.id,
+        billNumber: bill.billNumber,
+        customerName: bill.customerName,
+        status: bill.status,
+        grandTotal: bill.grandTotal,
+        createdAt: bill.createdAt,
+        itemCount: bill.lineItems.length,
+      })))
+    }
+    return apiClient.get(`/api/v1/customers/${customerId}/bills`)
   },
 
   getDashboardStats(): Promise<{

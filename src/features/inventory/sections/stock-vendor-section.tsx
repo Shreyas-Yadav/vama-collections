@@ -18,6 +18,9 @@ interface StockVendorSectionProps {
 }
 
 export function StockVendorSection({ register, watch, setValue, errors, vendors }: StockVendorSectionProps) {
+  const openingStock = watch('quantityInStock') ?? 0
+  const lowStockThreshold = watch('lowStockThreshold') ?? 0
+
   return (
     <Card>
       <CardHeader><CardTitle>Stock & Vendor</CardTitle></CardHeader>
@@ -26,6 +29,7 @@ export function StockVendorSection({ register, watch, setValue, errors, vendors 
           <Label required>Opening Stock Qty</Label>
           <Input
             type="number"
+            min="0"
             {...register('quantityInStock', { valueAsNumber: true })}
             error={!!errors.quantityInStock}
             className="mt-1"
@@ -35,6 +39,7 @@ export function StockVendorSection({ register, watch, setValue, errors, vendors 
           <Label required>Low Stock Alert Threshold</Label>
           <Input
             type="number"
+            min="0"
             {...register('lowStockThreshold', { valueAsNumber: true })}
             className="mt-1"
           />
@@ -61,6 +66,11 @@ export function StockVendorSection({ register, watch, setValue, errors, vendors 
           />
           <Label>Active (visible in inventory)</Label>
         </div>
+        {openingStock < lowStockThreshold && (
+          <div className="sm:col-span-2">
+            <p className="text-xs text-[var(--color-muted)]">Note: With this stock level, this product will immediately appear as Low Stock.</p>
+          </div>
+        )}
       </CardContent>
     </Card>
   )
